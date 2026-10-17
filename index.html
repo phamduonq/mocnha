@@ -35,6 +35,7 @@
           <a href="#products-section" class="nav-link-custom">Bộ sưu tập</a>
           <a href="#about-section" class="nav-link-custom">Triết lý Wabi-Sabi</a>
           <a href="#orders-section" class="nav-link-custom d-none" id="nav-my-orders">Đơn của tôi</a>
+          <a href="#admin" class="nav-link-custom d-none" id="nav-admin-link">Quản trị</a>
         </div>
         
         <!-- Actions: Auth & Cart -->
@@ -178,6 +179,74 @@
         <div id="orders-list-container">
           <!-- Rendered dynamically via orders.js -->
         </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: ADMIN DASHBOARD (CRUD PRODUCTS & REALTIME) -->
+    <section id="admin-dashboard-section" class="py-5 d-none">
+      <div class="container py-lg-4">
+        
+        <!-- Header Admin -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-4 mb-4 gap-3">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="badge bg-dark" style="letter-spacing: 0.1em; font-size: 0.7rem;">ROLE: ADMIN</span>
+              <span class="text-uppercase fw-semibold" style="letter-spacing: 0.1em; font-size: 0.75rem; color: var(--color-wood);">Hệ thống điều hành</span>
+            </div>
+            <h1 class="font-serif fs-2 fw-normal mb-1">Quản lý kho tác phẩm</h1>
+            <p class="text-muted small mb-0">Thêm, sửa, xóa sản phẩm và đồng bộ thời gian thực toàn cầu.</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button id="btn-open-create-product" class="btn-minimal-dark py-2 px-3" type="button" style="font-size: 0.85rem;">
+              + Thêm tác phẩm mới
+            </button>
+            <a href="#home" class="btn-minimal-outline py-2 px-3 text-decoration-none" style="font-size: 0.85rem;">
+              &larr; Về trang chủ
+            </a>
+          </div>
+        </div>
+
+        <!-- Hàng KPI cards tóm tắt -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-label">Tổng tác phẩm đang quản lý</div>
+              <div class="admin-kpi-value" id="admin-kpi-total-products">0</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-label">Tổng số lượng tồn kho</div>
+              <div class="admin-kpi-value" id="admin-kpi-total-stock">0</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-label">Tác phẩm sắp hết (≤ 3 chiếc)</div>
+              <div class="admin-kpi-value text-danger" id="admin-kpi-low-stock">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bảng sản phẩm Admin -->
+        <div class="admin-table-container shadow-sm">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Ảnh</th>
+                <th>Tác phẩm &amp; Chất liệu</th>
+                <th>Phân loại</th>
+                <th>Đơn giá</th>
+                <th>Tồn kho</th>
+                <th class="text-end">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="admin-products-table-body">
+              <!-- Rendered dynamically via admin.js -->
+            </tbody>
+          </table>
+        </div>
+
       </div>
     </section>
 
@@ -332,6 +401,96 @@
           Tôi đã chuyển khoản &bull; Xác nhận thanh toán
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- 9. ADMIN PRODUCT MODAL (CREATE & UPDATE) -->
+  <div id="admin-product-modal" class="minimal-modal-backdrop d-none">
+    <div class="minimal-modal-card" style="max-width: 640px; max-height: 90vh; overflow-y: auto;">
+      <button type="button" id="btn-close-product-modal" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Đóng"></button>
+      
+      <div class="border-bottom pb-3 mb-4">
+        <span class="text-uppercase fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.1em; color: var(--color-wood);">Quản trị sản phẩm</span>
+        <h3 id="admin-product-modal-title" class="font-serif fs-3 mb-1">Thêm tác phẩm nội thất mới</h3>
+        <p class="text-muted small mb-0">Dữ liệu được bảo vệ nghiêm ngặt bởi Supabase Admin RLS.</p>
+      </div>
+
+      <form id="form-admin-product">
+        <div class="row g-3">
+          <div class="col-md-7 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-input-name">Tên tác phẩm *</label>
+            <input type="text" id="admin-input-name" class="form-minimal-input" placeholder="Ví dụ: Bàn Trà Kumo Walnut" required>
+          </div>
+          <div class="col-md-5 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-select-category">Phân loại *</label>
+            <select id="admin-select-category" class="form-minimal-input" required>
+              <option value="table">Bàn</option>
+              <option value="chair">Ghế</option>
+              <option value="cabinet">Tủ &amp; Kệ</option>
+              <option value="bed">Giường</option>
+              <option value="decor">Đồ trang trí</option>
+            </select>
+          </div>
+
+          <div class="col-md-6 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-input-slug">Đường dẫn Slug (URL thân thiện)</label>
+            <input type="text" id="admin-input-slug" class="form-minimal-input" placeholder="ban-tra-kumo-walnut">
+          </div>
+          <div class="col-md-6 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-input-material">Chất liệu chế tác</label>
+            <input type="text" id="admin-input-material" class="form-minimal-input" placeholder="Gỗ Walnut nguyên tấm">
+          </div>
+
+          <div class="col-md-6 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-input-price">Giá niêm yết (VND) *</label>
+            <input type="number" id="admin-input-price" class="form-minimal-input" placeholder="4500000" min="0" step="10000" required>
+          </div>
+          <div class="col-md-6 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-input-stock">Số lượng tồn kho ban đầu *</label>
+            <input type="number" id="admin-input-stock" class="form-minimal-input" placeholder="5" min="0" required>
+          </div>
+
+          <div class="col-12 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-input-dimensions">Kích thước sản phẩm</label>
+            <input type="text" id="admin-input-dimensions" class="form-minimal-input" placeholder="Dài 110cm x Rộng 55cm x Cao 38cm">
+          </div>
+
+          <div class="col-12 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-input-image">Đường dẫn ảnh sản phẩm (URL) *</label>
+            <input type="url" id="admin-input-image" class="form-minimal-input" placeholder="https://images.unsplash.com/photo-..." required>
+          </div>
+
+          <div class="col-12 form-minimal-group mb-0">
+            <label class="form-minimal-label" for="admin-input-desc">Mô tả tác phẩm</label>
+            <textarea id="admin-input-desc" class="form-minimal-input" rows="3" placeholder="Đường nét uốn cong Wabi-Sabi, hoàn thiện dầu thực vật hữu cơ..."></textarea>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+          <button type="button" id="btn-cancel-product-modal" class="btn-minimal-outline py-2 px-3">Hủy</button>
+          <button type="submit" id="btn-admin-submit-product" class="btn-minimal-dark py-2 px-4">Lưu tác phẩm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 10. ADMIN DELETE CONFIRM MODAL -->
+  <div id="admin-delete-modal" class="minimal-modal-backdrop d-none">
+    <div class="minimal-modal-card" style="max-width: 440px;">
+      <button type="button" id="btn-close-delete-modal" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Đóng"></button>
+      
+      <div class="mb-3">
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle mb-2">CẢNH BÁO QUẢN TRỊ</span>
+        <h4 class="font-serif fs-4 mb-2">Xác nhận gỡ tác phẩm</h4>
+        <p class="text-secondary small mb-0">
+          Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm <strong id="admin-delete-product-name" class="text-dark"></strong> khỏi hệ thống?
+        </p>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+        <button type="button" id="btn-cancel-delete-modal" class="btn-minimal-outline py-2 px-3">Hủy</button>
+        <button type="button" id="btn-admin-confirm-delete" class="btn-minimal-dark py-2 px-3 bg-danger border-danger">Xác nhận xóa</button>
+      </div>
     </div>
   </div>
 

@@ -84,8 +84,113 @@ export function renderProductsSkeleton(containerEl, count = 6) {
 }
 
 /**
+ * Tạo một Node DOM hoàn chỉnh cho thẻ sản phẩm (Chống XSS 100%)
+ */
+export function createProductCardElement(product) {
+  const col = document.createElement('div');
+  col.className = 'col-12 col-md-6 col-lg-4';
+
+  const card = document.createElement('article');
+  card.className = 'product-card';
+  card.dataset.productId = product.id;
+
+  const mediaWrap = document.createElement('div');
+  mediaWrap.className = 'product-card-media';
+
+  const img = document.createElement('img');
+  img.className = 'product-card-img';
+  img.src = sanitizeImageUrl(product.image_url);
+  img.setAttribute('alt', product.name || 'Sản phẩm nội thất mộcnhà.');
+  img.setAttribute('loading', 'lazy');
+
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = FALLBACK_IMAGE;
+  };
+
+  const badge = document.createElement('span');
+  badge.className = 'stock-badge product-card-badge';
+  badge.dataset.stockBadgeId = product.id;
+  const stock = Number(product.stock) || 0;
+
+  if (stock <= 0) {
+    badge.classList.add('stock-out');
+    badge.textContent = 'Hết hàng';
+  } else if (stock <= 3) {
+    badge.classList.add('stock-low');
+    badge.textContent = `Chỉ còn ${stock} chiếc`;
+  } else {
+    badge.classList.add('stock-in');
+    badge.textContent = `Còn ${stock} chiếc`;
+  }
+
+  mediaWrap.appendChild(img);
+  mediaWrap.appendChild(badge);
+
+  const body = document.createElement('div');
+  body.className = 'product-card-body';
+
+  const catSpan = document.createElement('span');
+  catSpan.className = 'product-card-category';
+  catSpan.textContent = getCategoryLabel(product.category);
+
+  const titleH3 = document.createElement('h3');
+  titleH3.className = 'product-card-title';
+  titleH3.textContent = product.name || 'Tác phẩm gỗ mộc';
+
+  const materialP = document.createElement('p');
+  materialP.className = 'product-card-material mb-2';
+  materialP.textContent = product.material || 'Gỗ tự nhiên cao cấp';
+
+  const dimSpan = document.createElement('p');
+  dimSpan.className = 'text-muted small mb-0 product-card-dimensions';
+  dimSpan.style.fontSize = '0.775rem';
+  dimSpan.textContent = product.dimensions ? `Kích thước: ${product.dimensions}` : '';
+
+  const footer = document.createElement('div');
+  footer.className = 'product-card-footer';
+
+  const priceSpan = document.createElement('span');
+  priceSpan.className = 'product-card-price';
+  priceSpan.textContent = formatCurrency(product.price);
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn-minimal-dark py-2 px-3 add-to-cart-btn';
+  addBtn.style.fontSize = '0.8rem';
+  addBtn.dataset.productId = product.id;
+  addBtn.dataset.productName = product.name;
+  addBtn.dataset.productPrice = product.price;
+  addBtn.dataset.productImage = product.image_url;
+  addBtn.dataset.productStock = product.stock;
+
+  if (stock <= 0) {
+    addBtn.disabled = true;
+    addBtn.textContent = 'Hết hàng';
+    addBtn.classList.add('opacity-50');
+  } else {
+    addBtn.textContent = 'Thêm vào giỏ';
+  }
+
+  footer.appendChild(priceSpan);
+  footer.appendChild(addBtn);
+
+  body.appendChild(catSpan);
+  body.appendChild(titleH3);
+  body.appendChild(materialP);
+  if (product.dimensions) {
+    body.appendChild(dimSpan);
+  }
+  body.appendChild(footer);
+
+  card.appendChild(mediaWrap);
+  card.appendChild(body);
+  col.appendChild(card);
+  return col;
+}
+
+/**
  * Render danh sách sản phẩm bằng document.createElement & textContent (Chống XSS 100%)
- * TUYỆT ĐỐI KHÔNG gắn eventListener trong vòng lặp này -> Dùng Event Delegation từ cha
  * @param {HTMLElement} containerEl 
  * @param {Array} products 
  */
@@ -99,37 +204,53 @@ export function renderProductList(containerEl, products) {
   }
 
   products.forEach((product) => {
-    // 1. Cột Bootstrap Grid
-    const col = document.createElement('div');
-    col.className = 'col-12 col-md-6 col-lg-4';
+    const col = createProductCardElement(product);
+    containerEl.appendChild(col);
+  });
+}
 
-    // 2. Thẻ Article Product Card
-    const card = document.createElement('article');
-    card.className = 'product-card';
-    card.dataset.productId = product.id;
+/**
+ * Thêm một sản phẩm mới lên đầu danh sách trang chủ (Realtime INSERT)
+ */
+export function prependProductCard(containerEl, product) {
+  if (!containerEl) return;
+  // Nếu đang hiển thị empty state, dọn sạch trước
+  if (containerEl.querySelector('.text-center.py-5')) {
+    containerEl.replaceChildren();
+  }
+  const col = createProductCardElement(product);
+  containerEl.prepend(col);
+}
 
-    // 3. Media Wrapper
-    const mediaWrap = document.createElement('div');
-    mediaWrap.className = 'product-card-media';
+/**
+ * Cập nhật toàn diện một sản phẩm trên DOM trang chủ (Realtime UPDATE)
+ */
+export function updateProductCardData(product) {
+  const card = document.querySelector(`.product-card[data-product-id="${product.id}"]`);
+  if (!card) return;
 
-    const img = document.createElement('img');
-    img.className = 'product-card-img';
-    img.src = sanitizeImageUrl(product.image_url);
-    img.setAttribute('alt', product.name || 'Sản phẩm nội thất mộcnhà.');
-    img.setAttribute('loading', 'lazy');
+  const titleEl = card.querySelector('.product-card-title');
+  if (titleEl) titleEl.textContent = product.name;
 
-    // Bắt lỗi hình ảnh 404 -> Nạp ảnh fallback mộcnhà.
-    img.onerror = () => {
-      img.onerror = null; // Chống lặp vô hạn
-      img.src = FALLBACK_IMAGE;
-    };
+  const catEl = card.querySelector('.product-card-category');
+  if (catEl) catEl.textContent = getCategoryLabel(product.category);
 
-    // Badge Tồn kho
-    const badge = document.createElement('span');
+  const materialEl = card.querySelector('.product-card-material');
+  if (materialEl) materialEl.textContent = product.material || 'Gỗ tự nhiên';
+
+  const priceEl = card.querySelector('.product-card-price');
+  if (priceEl) priceEl.textContent = formatCurrency(product.price);
+
+  const imgEl = card.querySelector('.product-card-img');
+  if (imgEl && product.image_url) {
+    imgEl.src = sanitizeImageUrl(product.image_url);
+    imgEl.setAttribute('alt', product.name);
+  }
+
+  const stock = Number(product.stock) || 0;
+  const badge = card.querySelector('.product-card-badge');
+  if (badge) {
     badge.className = 'stock-badge product-card-badge';
-    badge.dataset.stockBadgeId = product.id;
-    const stock = Number(product.stock) || 0;
-
     if (stock <= 0) {
       badge.classList.add('stock-out');
       badge.textContent = 'Hết hàng';
@@ -140,74 +261,38 @@ export function renderProductList(containerEl, products) {
       badge.classList.add('stock-in');
       badge.textContent = `Còn ${stock} chiếc`;
     }
+  }
 
-    mediaWrap.appendChild(img);
-    mediaWrap.appendChild(badge);
-
-    // 4. Body Card
-    const body = document.createElement('div');
-    body.className = 'product-card-body';
-
-    const catSpan = document.createElement('span');
-    catSpan.className = 'product-card-category';
-    catSpan.textContent = getCategoryLabel(product.category);
-
-    const titleH3 = document.createElement('h3');
-    titleH3.className = 'product-card-title';
-    titleH3.textContent = product.name || 'Tác phẩm gỗ mộc';
-
-    const materialP = document.createElement('p');
-    materialP.className = 'product-card-material mb-2';
-    materialP.textContent = product.material || 'Gỗ tự nhiên cao cấp';
-
-    const dimSpan = document.createElement('p');
-    dimSpan.className = 'text-muted small mb-0';
-    dimSpan.style.fontSize = '0.775rem';
-    dimSpan.textContent = product.dimensions ? `Kích thước: ${product.dimensions}` : '';
-
-    // 5. Footer Card (Giá & Nút Thêm vào giỏ)
-    const footer = document.createElement('div');
-    footer.className = 'product-card-footer';
-
-    const priceSpan = document.createElement('span');
-    priceSpan.className = 'product-card-price';
-    priceSpan.textContent = formatCurrency(product.price);
-
-    // Nút "Thêm vào giỏ" hỗ trợ Event Delegation
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'btn-minimal-dark py-2 px-3 add-to-cart-btn';
-    addBtn.style.fontSize = '0.8rem';
-    addBtn.dataset.productId = product.id;
-    addBtn.dataset.productName = product.name;
-    addBtn.dataset.productPrice = product.price;
-    addBtn.dataset.productImage = product.image_url;
-    addBtn.dataset.productStock = product.stock;
+  const btn = card.querySelector('button');
+  if (btn) {
+    btn.dataset.productName = product.name;
+    btn.dataset.productPrice = product.price;
+    btn.dataset.productImage = product.image_url;
+    btn.dataset.productStock = stock;
 
     if (stock <= 0) {
-      addBtn.disabled = true;
-      addBtn.textContent = 'Hết hàng';
-      addBtn.classList.add('opacity-50');
+      btn.disabled = true;
+      btn.textContent = 'Tạm hết hàng';
+      btn.classList.remove('add-to-cart-btn');
+      btn.classList.add('opacity-50');
     } else {
-      addBtn.textContent = 'Thêm vào giỏ';
+      btn.disabled = false;
+      btn.textContent = 'Thêm vào giỏ';
+      btn.classList.add('add-to-cart-btn');
+      btn.classList.remove('opacity-50');
     }
+  }
+}
 
-    footer.appendChild(priceSpan);
-    footer.appendChild(addBtn);
-
-    body.appendChild(catSpan);
-    body.appendChild(titleH3);
-    body.appendChild(materialP);
-    if (product.dimensions) {
-      body.appendChild(dimSpan);
-    }
-    body.appendChild(footer);
-
-    card.appendChild(mediaWrap);
-    card.appendChild(body);
-    col.appendChild(card);
-    containerEl.appendChild(col);
-  });
+/**
+ * Xóa một sản phẩm khỏi giao diện trang chủ (Realtime DELETE)
+ */
+export function removeProductCardDOM(productId) {
+  const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+  if (card) {
+    const col = card.closest('.col-12');
+    col?.remove();
+  }
 }
 
 /**

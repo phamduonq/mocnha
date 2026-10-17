@@ -248,6 +248,14 @@ export function updateAuthUI(user, profile) {
   if (user && profile) {
     const displayName = profile.full_name || user.user_metadata?.full_name || user.email.split('@')[0];
     const isAdmin = profile.role === 'admin';
+    const adminNavLink = document.getElementById('nav-admin-link');
+    if (adminNavLink) {
+      if (isAdmin) {
+        adminNavLink.classList.remove('d-none');
+      } else {
+        adminNavLink.classList.add('d-none');
+      }
+    }
 
     container.innerHTML = `
       <div class="d-flex align-items-center gap-2">
@@ -265,6 +273,9 @@ export function updateAuthUI(user, profile) {
     myOrdersLink?.classList.remove('d-none');
   } else {
     // Trạng thái Guest / Chưa đăng nhập
+    const adminNavLink = document.getElementById('nav-admin-link');
+    adminNavLink?.classList.add('d-none');
+
     container.innerHTML = `
       <button id="btn-open-auth" class="btn-minimal-outline py-2 px-3" style="font-size: 0.8rem;">
         Đăng nhập
@@ -273,6 +284,13 @@ export function updateAuthUI(user, profile) {
     document.getElementById('btn-open-auth')?.addEventListener('click', () => openAuthModal('login'));
     myOrdersLink?.classList.add('d-none');
   }
+}
+
+/**
+ * Kiểm tra xem người dùng hiện tại có vai trò Admin hay không
+ */
+export function isAdminUser() {
+  return currentProfile?.role === 'admin';
 }
 
 /**
