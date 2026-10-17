@@ -25,7 +25,7 @@
         
         <!-- Brand Logo -->
         <div class="col-auto">
-          <a href="#" class="brand-logo" id="brand-home-link">
+          <a href="#home" class="brand-logo" id="brand-home-link">
             mộcnhà<span>.</span>
           </a>
         </div>
@@ -60,97 +60,123 @@
   <!-- MAIN CONTENT CONTAINER -->
   <main id="main-content">
     
-    <!-- 2. HERO SECTION -->
-    <section class="py-5" style="border-bottom: 1px solid var(--color-border);">
+    <!-- VIEW 1: HOME & PRODUCTS VIEW -->
+    <div id="home-view">
+      <!-- 2. HERO SECTION -->
+      <section class="py-5" style="border-bottom: 1px solid var(--color-border);">
+        <div class="container py-lg-4">
+          <div class="row align-items-center">
+            <div class="col-lg-7">
+              <span class="text-uppercase fw-semibold" style="letter-spacing: 0.15em; font-size: 0.75rem; color: var(--color-wood);">
+                Gỗ Tự Nhiên &bull; Bền Vững &bull; Tối Giản
+              </span>
+              <h1 class="font-serif mt-3 mb-4 display-5 fw-normal" style="line-height: 1.25;">
+                Không gian sống tĩnh lặng, tôn vinh vẻ đẹp nguyên bản của vân gỗ.
+              </h1>
+              <p class="text-secondary mb-4" style="max-width: 540px; font-size: 1.05rem;">
+                Mỗi tác phẩm tại mộcnhà. là một sự chắt chiu từ gỗ sồi Bắc Mỹ, óc chó nguyên khối và mây thủ công, mang đến sự ấm áp và bình yên cho ngôi nhà bạn.
+              </p>
+              <div class="d-flex gap-3">
+                <a href="#products-section" class="btn-minimal-dark text-decoration-none">
+                  Khám phá bộ sưu tập
+                </a>
+              </div>
+            </div>
+            <div class="col-lg-5 mt-4 mt-lg-0 text-center">
+              <img src="https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=1000&q=80" 
+                   alt="mộcnhà. minimalist wooden aesthetic" 
+                   class="img-fluid" 
+                   style="max-height: 420px; width: 100%; object-fit: cover; filter: brightness(0.96);">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. PRODUCTS SECTION -->
+      <section id="products-section" class="py-5">
+        <div class="container">
+          <!-- Section Header & Filter Utilities -->
+          <div class="row justify-content-between align-items-end mb-4">
+            <div class="col-md-6">
+              <h2 class="font-serif fs-2 fw-normal mb-1">Tác phẩm nội thất</h2>
+              <p class="text-muted small mb-0">Tồn kho được đồng bộ theo thời gian thực (Supabase Realtime).</p>
+            </div>
+            <div class="col-md-6 mt-3 mt-md-0 d-flex flex-wrap justify-content-md-end gap-2" id="category-filters">
+              <button class="btn btn-sm btn-outline-dark active filter-btn" data-category="all">Tất cả</button>
+              <button class="btn btn-sm btn-outline-dark filter-btn" data-category="table">Bàn</button>
+              <button class="btn btn-sm btn-outline-dark filter-btn" data-category="chair">Ghế</button>
+              <button class="btn btn-sm btn-outline-dark filter-btn" data-category="cabinet">Tủ & Kệ</button>
+            </div>
+          </div>
+
+          <!-- Products Grid Container: Khởi tạo sẵn CSS Skeleton Shimmer chống giật layout -->
+          <div id="products-grid" class="row g-4">
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="skeleton-card">
+                <div class="skeleton-box skeleton-media"></div>
+                <div class="skeleton-box skeleton-text-sm"></div>
+                <div class="skeleton-box skeleton-title"></div>
+                <div class="skeleton-box skeleton-desc"></div>
+                <div class="skeleton-box skeleton-footer"></div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="skeleton-card">
+                <div class="skeleton-box skeleton-media"></div>
+                <div class="skeleton-box skeleton-text-sm"></div>
+                <div class="skeleton-box skeleton-title"></div>
+                <div class="skeleton-box skeleton-desc"></div>
+                <div class="skeleton-box skeleton-footer"></div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="skeleton-card">
+                <div class="skeleton-box skeleton-media"></div>
+                <div class="skeleton-box skeleton-text-sm"></div>
+                <div class="skeleton-box skeleton-title"></div>
+                <div class="skeleton-box skeleton-desc"></div>
+                <div class="skeleton-box skeleton-footer"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. WABI-SABI PHILOSOPHY -->
+      <section id="about-section" class="py-5" style="background-color: var(--color-surface); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);">
+        <div class="container py-4">
+          <div class="row justify-content-center text-center">
+            <div class="col-lg-8">
+              <span class="text-uppercase fw-semibold" style="letter-spacing: 0.15em; font-size: 0.75rem; color: var(--color-wood);">Triết lý thiết kế</span>
+              <h3 class="font-serif fs-3 mt-2 mb-3">Tôn trọng sự mộc mạc và bất toàn</h3>
+              <p class="text-secondary mb-0" style="font-size: 0.95rem; line-height: 1.8;">
+                Chúng tôi không giấu đi những mắt gỗ hay đường vân uốn lượn tự nhiên. Thay vào đó, chúng tôi giữ lại linh hồn của thân cây qua những đường vát thủ công tỉ mỉ và lớp dầu thực vật an toàn cho sức khỏe gia đình bạn.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- VIEW 2: ORDERS SECTION (SPA HASH ROUTING) -->
+    <section id="orders-section" class="py-5 d-none">
       <div class="container py-lg-4">
-        <div class="row align-items-center">
-          <div class="col-lg-7">
-            <span class="text-uppercase fw-semibold" style="letter-spacing: 0.15em; font-size: 0.75rem; color: var(--color-wood);">
-              Gỗ Tự Nhiên &bull; Bền Vững &bull; Tối Giản
-            </span>
-            <h1 class="font-serif mt-3 mb-4 display-5 fw-normal" style="line-height: 1.25;">
-              Không gian sống tĩnh lặng, tôn vinh vẻ đẹp nguyên bản của vân gỗ.
-            </h1>
-            <p class="text-secondary mb-4" style="max-width: 540px; font-size: 1.05rem;">
-              Mỗi tác phẩm tại mộcnhà. là một sự chắt chiu từ gỗ sồi Bắc Mỹ, óc chó nguyên khối và mây thủ công, mang đến sự ấm áp và bình yên cho ngôi nhà bạn.
-            </p>
-            <div class="d-flex gap-3">
-              <a href="#products-section" class="btn-minimal-dark text-decoration-none">
-                Khám phá bộ sưu tập
-              </a>
-            </div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-4 mb-4 gap-3">
+          <div>
+            <span class="text-uppercase fw-semibold" style="letter-spacing: 0.12em; font-size: 0.75rem; color: var(--color-wood);">Lịch sử giao dịch</span>
+            <h1 class="font-serif fs-2 fw-normal mb-1">Đơn hàng của tôi</h1>
+            <p class="text-muted small mb-0">Dữ liệu được bảo vệ an toàn qua Supabase Row Level Security (RLS).</p>
           </div>
-          <div class="col-lg-5 mt-4 mt-lg-0 text-center">
-            <img src="https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=1000&q=80" 
-                 alt="mộcnhà. minimalist wooden aesthetic" 
-                 class="img-fluid" 
-                 style="max-height: 420px; width: 100%; object-fit: cover; filter: brightness(0.96);">
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3. PRODUCTS SECTION -->
-    <section id="products-section" class="py-5">
-      <div class="container">
-        <!-- Section Header & Filter Utilities -->
-        <div class="row justify-content-between align-items-end mb-4">
-          <div class="col-md-6">
-            <h2 class="font-serif fs-2 fw-normal mb-1">Tác phẩm nội thất</h2>
-            <p class="text-muted small mb-0">Tồn kho được đồng bộ theo thời gian thực (Supabase Realtime).</p>
-          </div>
-          <div class="col-md-6 mt-3 mt-md-0 d-flex flex-wrap justify-content-md-end gap-2" id="category-filters">
-            <button class="btn btn-sm btn-outline-dark active filter-btn" data-category="all">Tất cả</button>
-            <button class="btn btn-sm btn-outline-dark filter-btn" data-category="table">Bàn</button>
-            <button class="btn btn-sm btn-outline-dark filter-btn" data-category="chair">Ghế</button>
-            <button class="btn btn-sm btn-outline-dark filter-btn" data-category="cabinet">Tủ & Kệ</button>
+          <div>
+            <a href="#home" class="btn-minimal-outline py-2 px-3 text-decoration-none" style="font-size: 0.85rem;">
+              &larr; Tiếp tục mua sắm
+            </a>
           </div>
         </div>
 
-        <!-- Products Grid Container: Khởi tạo sẵn CSS Skeleton Shimmer chống giật layout -->
-        <div id="products-grid" class="row g-4">
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="skeleton-card">
-              <div class="skeleton-box skeleton-media"></div>
-              <div class="skeleton-box skeleton-text-sm"></div>
-              <div class="skeleton-box skeleton-title"></div>
-              <div class="skeleton-box skeleton-desc"></div>
-              <div class="skeleton-box skeleton-footer"></div>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="skeleton-card">
-              <div class="skeleton-box skeleton-media"></div>
-              <div class="skeleton-box skeleton-text-sm"></div>
-              <div class="skeleton-box skeleton-title"></div>
-              <div class="skeleton-box skeleton-desc"></div>
-              <div class="skeleton-box skeleton-footer"></div>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="skeleton-card">
-              <div class="skeleton-box skeleton-media"></div>
-              <div class="skeleton-box skeleton-text-sm"></div>
-              <div class="skeleton-box skeleton-title"></div>
-              <div class="skeleton-box skeleton-desc"></div>
-              <div class="skeleton-box skeleton-footer"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4. WABI-SABI PHILOSOPHY -->
-    <section id="about-section" class="py-5" style="background-color: var(--color-surface); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);">
-      <div class="container py-4">
-        <div class="row justify-content-center text-center">
-          <div class="col-lg-8">
-            <span class="text-uppercase fw-semibold" style="letter-spacing: 0.15em; font-size: 0.75rem; color: var(--color-wood);">Triết lý thiết kế</span>
-            <h3 class="font-serif fs-3 mt-2 mb-3">Tôn trọng sự mộc mạc và bất toàn</h3>
-            <p class="text-secondary mb-0" style="font-size: 0.95rem; line-height: 1.8;">
-              Chúng tôi không giấu đi những mắt gỗ hay đường vân uốn lượn tự nhiên. Thay vào đó, chúng tôi giữ lại linh hồn của thân cây qua những đường vát thủ công tỉ mỉ và lớp dầu thực vật an toàn cho sức khỏe gia đình bạn.
-            </p>
-          </div>
+        <!-- Container danh sách đơn hàng -->
+        <div id="orders-list-container">
+          <!-- Rendered dynamically via orders.js -->
         </div>
       </div>
     </section>

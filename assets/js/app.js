@@ -1,16 +1,18 @@
 /**
  * assets/js/app.js
  * Entry Point chính điều phối các module theo Vanilla JS ES6 Module Pattern
+ * Tích hợp SPA Hash Router, Route Protection, Event Delegation & Realtime
  */
 
 import { supabase, testSupabaseConnection } from './supabaseClient.js';
 import { showToast } from './toast.js';
-import { initAuth } from './auth.js';
+import { initAuth, requireAuth } from './auth.js';
 import { fetchProducts } from './products.js';
 import { renderProductsSkeleton, renderProductList } from './ui.js';
 import { initCart, addToCart } from './cart.js';
 import { initCheckout } from './checkout.js';
 import { initProductRealtime } from './realtime.js';
+import { fetchUserOrders, renderOrdersSkeleton, renderOrdersList } from './orders.js';
 
 console.log('[mộcnhà.] App initializing...');
 
@@ -49,6 +51,70 @@ function updateProductInMemory(updatedProduct) {
     currentProducts[idx] = { ...currentProducts[idx], ...updatedProduct };
   } else {
     currentProducts.push(updatedProduct);
+  }
+}
+
+/**
+ * Nạp và render danh sách đơn hàng của người dùng hiện tại
+ */
+async function loadAndRenderUserOrders() {
+  const container = document.getElementById('orders-list-container');
+  if (!container) return;
+
+  renderOrdersSkeleton(container, 2);
+
+  const res = await fetchUserOrders();
+  if (res.success) {
+    renderOrdersList(container, res.data);
+  } else {
+    showToast('Lỗi khi tải danh sách đơn hàng: ' + res.error, 'error');
+  }
+}
+
+/**
+ * SPA HASH ROUTER: Điều phối hiển thị View dựa trên window.location.hash
+ */
+async function handleRouting() {
+  const rawHash = (window.location.hash || '').trim();
+  const hash = rawHash === '' || rawHash === '#' ? '#home' : rawHash;
+
+  const homeView = document.getElementById('home-view');
+  const ordersSection = document.getElementById('orders-section');
+  const navOrdersLink = document.getElementById('nav-my-orders');
+
+  console.log('[mộcnhà. Router] Đang điều hướng đến:', hash);
+
+  // VIEW 1: ĐƠN HÀNG CỦA TÔI (#orders-section)
+  if (hash === '#orders-section') {
+    const isAllowed = await requireAuth(async (user, profile) => {
+      // Ẩn trang chủ, hiện phần đơn hàng
+      homeView?.classList.add('d-none');
+      ordersSection?.classList.remove('d-none');
+      navOrdersLink?.classList.add('active');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      await loadAndRenderUserOrders();
+    });
+
+    if (!isAllowed) {
+      // Chưa đăng nhập: đẩy về trang chủ #home
+      window.location.hash = '#home';
+    }
+    return;
+  }
+
+  // VIEW 2: TRANG CHỦ & CÁC SUB-SECTIONS (#home, #products-section, #about-section)
+  ordersSection?.classList.add('d-none');
+  homeView?.classList.remove('d-none');
+  navOrdersLink?.classList.remove('active');
+
+  if (hash === '#products-section' || hash === '#about-section') {
+    const targetEl = document.querySelector(hash);
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth' });
+    }
+  } else if (hash === '#home') {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
@@ -103,16 +169,16 @@ function setupProductGridEventDelegation() {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  // 1. Kiểm tra kết nối Supabase
+  // 1. Kiểm tra kết nối Supabase BaaS
   const conn = await testSupabaseConnection();
   if (!conn.connected) {
     showToast('Cảnh báo: Không thể kết nối tới Supabase BaaS: ' + conn.error, 'warning', 5000);
   }
 
-  // 2. Khởi tạo module Auth
+  // 2. Khởi tạo module Auth (Promise-Gate & OnAuthStateChange)
   await initAuth();
 
-  // 3. Khởi tạo Giỏ hàng & Checkout
+  // 3. Khởi tạo Giỏ hàng theo Event-Driven Architecture & Checkout RPC
   initCart();
   initCheckout();
 
@@ -123,10 +189,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupCategoryFilters();
   await loadAndRenderProducts('all');
 
-  // 6. Kích hoạt Supabase Realtime Synchronization
-  // Lắng nghe UPDATE trên bảng products, cập nhật cục bộ và DOM trực tiếp (không re-fetch toàn bộ)
+  // 6. Kích hoạt Supabase Realtime Synchronization trên bảng products
   initProductRealtime(
     () => currentProducts,
     updateProductInMemory
   );
+
+  // 7. LẮNG NGHE ĐIỀU PHỐI SPA ROUTER
+  window.addEventListener('hashchange', handleRouting);
+  // Kích hoạt định tuyến ngay lần tải đầu tiên (Initial Load)
+  await handleRouting();
+
+  // 8. Khi người dùng hoàn thành đơn hàng mới -> nếu đang xem đơn hàng thì tự động refresh
+  window.addEventListener('orderCreated', async () => {
+    if (window.location.hash === '#orders-section') {
+      await loadAndRenderUserOrders();
+    }
+  });
 });
