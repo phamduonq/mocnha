@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mộcnhà. — Nội thất gỗ tối giản</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans & Playfair Display -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5 CSS: Sử dụng Grid và Utility classes -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  
+  <!-- Custom Minimalist Styles -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- 1. SITE HEADER -->
+  <header class="site-header py-3">
+    <div class="container">
+      <div class="row align-items-center justify-content-between">
+        
+        <!-- Brand Logo -->
+        <div class="col-auto">
+          <a href="#" class="brand-logo" id="brand-home-link">
+            mộcnhà<span>.</span>
+          </a>
+        </div>
+        
+        <!-- Navigation Minimalist Links -->
+        <div class="col-auto d-none d-md-flex align-items-center gap-4">
+          <a href="#products-section" class="nav-link-custom">Bộ sưu tập</a>
+          <a href="#about-section" class="nav-link-custom">Triết lý Wabi-Sabi</a>
+          <a href="#orders-section" class="nav-link-custom d-none" id="nav-my-orders">Đơn của tôi</a>
+        </div>
+        
+        <!-- Actions: Auth & Cart -->
+        <div class="col-auto d-flex align-items-center gap-3">
+          <!-- Auth Container -->
+          <div id="auth-header-container" class="d-flex align-items-center">
+            <button id="btn-open-auth" class="btn-minimal-outline py-2 px-3" style="font-size: 0.8rem;">
+              Tài khoản
+            </button>
+          </div>
+          
+          <!-- Cart Button -->
+          <button id="btn-toggle-cart" class="btn-minimal-dark py-2 px-3 position-relative" style="font-size: 0.8rem;">
+            <span>Giỏ hàng</span>
+            <span id="cart-counter-badge" class="ms-1 fw-bold">(0)</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main id="main-content">
+    
+    <!-- 2. HERO SECTION -->
+    <section class="py-5" style="border-bottom: 1px solid var(--color-border);">
+      <div class="container py-lg-4">
+        <div class="row align-items-center">
+          <div class="col-lg-7">
+            <span class="text-uppercase fw-semibold" style="letter-spacing: 0.15em; font-size: 0.75rem; color: var(--color-wood);">
+              Gỗ Tự Nhiên &bull; Bền Vững &bull; Tối Giản
+            </span>
+            <h1 class="font-serif mt-3 mb-4 display-5 fw-normal" style="line-height: 1.25;">
+              Không gian sống tĩnh lặng, tôn vinh vẻ đẹp nguyên bản của vân gỗ.
+            </h1>
+            <p class="text-secondary mb-4" style="max-width: 540px; font-size: 1.05rem;">
+              Mỗi tác phẩm tại mộcnhà. là một sự chắt chiu từ gỗ sồi Bắc Mỹ, óc chó nguyên khối và mây thủ công, mang đến sự ấm áp và bình yên cho ngôi nhà bạn.
+            </p>
+            <div class="d-flex gap-3">
+              <a href="#products-section" class="btn-minimal-dark text-decoration-none">
+                Khám phá bộ sưu tập
+              </a>
+            </div>
+          </div>
+          <div class="col-lg-5 mt-4 mt-lg-0 text-center">
+            <img src="https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=1000&q=80" 
+                 alt="mộcnhà. minimalist wooden aesthetic" 
+                 class="img-fluid" 
+                 style="max-height: 420px; width: 100%; object-fit: cover; filter: brightness(0.96);">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. PRODUCTS SECTION -->
+    <section id="products-section" class="py-5">
+      <div class="container">
+        <!-- Section Header & Filter Utilities -->
+        <div class="row justify-content-between align-items-end mb-4">
+          <div class="col-md-6">
+            <h2 class="font-serif fs-2 fw-normal mb-1">Tác phẩm nội thất</h2>
+            <p class="text-muted small mb-0">Tồn kho được đồng bộ theo thời gian thực (Supabase Realtime).</p>
+          </div>
+          <div class="col-md-6 mt-3 mt-md-0 d-flex flex-wrap justify-content-md-end gap-2" id="category-filters">
+            <button class="btn btn-sm btn-outline-dark active filter-btn" data-category="all">Tất cả</button>
+            <button class="btn btn-sm btn-outline-dark filter-btn" data-category="table">Bàn</button>
+            <button class="btn btn-sm btn-outline-dark filter-btn" data-category="chair">Ghế</button>
+            <button class="btn btn-sm btn-outline-dark filter-btn" data-category="cabinet">Tủ & Kệ</button>
+          </div>
+        </div>
+
+        <!-- Products Grid Container: Khởi tạo sẵn CSS Skeleton Shimmer chống giật layout -->
+        <div id="products-grid" class="row g-4">
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="skeleton-card">
+              <div class="skeleton-box skeleton-media"></div>
+              <div class="skeleton-box skeleton-text-sm"></div>
+              <div class="skeleton-box skeleton-title"></div>
+              <div class="skeleton-box skeleton-desc"></div>
+              <div class="skeleton-box skeleton-footer"></div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="skeleton-card">
+              <div class="skeleton-box skeleton-media"></div>
+              <div class="skeleton-box skeleton-text-sm"></div>
+              <div class="skeleton-box skeleton-title"></div>
+              <div class="skeleton-box skeleton-desc"></div>
+              <div class="skeleton-box skeleton-footer"></div>
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="skeleton-card">
+              <div class="skeleton-box skeleton-media"></div>
+              <div class="skeleton-box skeleton-text-sm"></div>
+              <div class="skeleton-box skeleton-title"></div>
+              <div class="skeleton-box skeleton-desc"></div>
+              <div class="skeleton-box skeleton-footer"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. WABI-SABI PHILOSOPHY -->
+    <section id="about-section" class="py-5" style="background-color: var(--color-surface); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);">
+      <div class="container py-4">
+        <div class="row justify-content-center text-center">
+          <div class="col-lg-8">
+            <span class="text-uppercase fw-semibold" style="letter-spacing: 0.15em; font-size: 0.75rem; color: var(--color-wood);">Triết lý thiết kế</span>
+            <h3 class="font-serif fs-3 mt-2 mb-3">Tôn trọng sự mộc mạc và bất toàn</h3>
+            <p class="text-secondary mb-0" style="font-size: 0.95rem; line-height: 1.8;">
+              Chúng tôi không giấu đi những mắt gỗ hay đường vân uốn lượn tự nhiên. Thay vào đó, chúng tôi giữ lại linh hồn của thân cây qua những đường vát thủ công tỉ mỉ và lớp dầu thực vật an toàn cho sức khỏe gia đình bạn.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 5. FOOTER -->
+  <footer class="py-4" style="border-top: 1px solid var(--color-border);">
+    <div class="container">
+      <div class="row align-items-center justify-content-between text-muted small">
+        <div class="col-auto">
+          &copy; 2026 <strong>mộcnhà.</strong> — Bản quyền thuộc về kiến trúc Serverless BaaS.
+        </div>
+        <div class="col-auto">
+          <span>Tối giản &bull; Realtime Inventory &bull; Supabase RLS</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 6. AUTH MODAL (LOGIN & REGISTER - SPA MINIMALIST) -->
+  <div id="auth-modal" class="minimal-modal-backdrop d-none">
+    <div class="minimal-modal-card">
+      
+      <!-- Close button -->
+      <button type="button" id="btn-close-auth-modal" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Đóng"></button>
+
+      <!-- Modal Header: Tabs -->
+      <div class="d-flex border-bottom mb-4">
+        <button id="tab-btn-login" class="auth-tab-btn active" type="button">Đăng nhập</button>
+        <button id="tab-btn-register" class="auth-tab-btn" type="button">Tạo tài khoản</button>
+      </div>
+
+      <!-- FORM 1: LOGIN -->
+      <form id="form-login">
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="input-login-email">Địa chỉ Email</label>
+          <input type="email" id="input-login-email" class="form-minimal-input" placeholder="ten@vidu.com" required autocomplete="email">
+        </div>
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="input-login-password">Mật khẩu</label>
+          <input type="password" id="input-login-password" class="form-minimal-input" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <div class="mt-4">
+          <button type="submit" id="btn-submit-login" class="btn-minimal-dark w-100 py-3">
+            Đăng nhập
+          </button>
+        </div>
+      </form>
+
+      <!-- FORM 2: REGISTER -->
+      <form id="form-register" class="d-none">
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="input-register-name">Họ và tên</label>
+          <input type="text" id="input-register-name" class="form-minimal-input" placeholder="Nguyễn Văn A" required autocomplete="name">
+        </div>
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="input-register-email">Địa chỉ Email</label>
+          <input type="email" id="input-register-email" class="form-minimal-input" placeholder="ten@vidu.com" required autocomplete="email">
+        </div>
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="input-register-phone">Số điện thoại</label>
+          <input type="tel" id="input-register-phone" class="form-minimal-input" placeholder="0901 234 567" autocomplete="tel">
+        </div>
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="input-register-password">Mật khẩu (tối thiểu 6 ký tự)</label>
+          <input type="password" id="input-register-password" class="form-minimal-input" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+        </div>
+        <div class="mt-4">
+          <button type="submit" id="btn-submit-register" class="btn-minimal-dark w-100 py-3">
+            Tạo tài khoản mới
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- 7. CART OFFCANVAS DRAWER (TRƯỢT TỪ PHẢI SANG) -->
+  <div id="cart-drawer-backdrop" class="cart-drawer-backdrop"></div>
+  <aside id="cart-drawer" class="cart-drawer" aria-label="Giỏ hàng của bạn">
+    <div class="cart-drawer-header">
+      <h3 class="font-serif fs-4 mb-0">Giỏ hàng của bạn</h3>
+      <button type="button" id="btn-close-cart-drawer" class="btn-close" aria-label="Đóng giỏ hàng"></button>
+    </div>
+    
+    <!-- Danh sách Items được render an toàn qua Vanilla JS -->
+    <div id="cart-drawer-items" class="cart-drawer-body">
+      <!-- Items dynamically appended here -->
+    </div>
+
+    <div class="cart-drawer-footer">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-secondary small text-uppercase fw-semibold" style="letter-spacing: 0.05em;">Tổng thanh toán:</span>
+        <strong id="cart-drawer-total" class="fs-5" style="color: var(--color-wood-dark);">0 ₫</strong>
+      </div>
+      <button id="btn-open-checkout" class="btn-minimal-dark w-100 py-3" type="button">
+        Tiến hành thanh toán
+      </button>
+    </div>
+  </aside>
+
+  <!-- 8. CHECKOUT MODAL (MÔ PHỎNG THANH TOÁN QR & RPC GIAO DỊCH) -->
+  <div id="checkout-modal" class="minimal-modal-backdrop d-none">
+    <div class="minimal-modal-card" style="max-width: 540px; max-height: 90vh; overflow-y: auto;">
+      <button type="button" id="btn-close-checkout-modal" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Đóng"></button>
+      
+      <div class="border-bottom pb-3 mb-4">
+        <span class="text-uppercase fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.1em; color: var(--color-wood);">Bảo mật Serverless</span>
+        <h3 class="font-serif fs-3 mb-1">Xác nhận đơn hàng</h3>
+        <p class="text-muted small mb-0">Thông tin giao hàng &amp; Mô phỏng chuyển khoản QR</p>
+      </div>
+
+      <form id="form-checkout">
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="checkout-name">Người nhận hàng *</label>
+          <input type="text" id="checkout-name" class="form-minimal-input" placeholder="Họ và tên" required autocomplete="name">
+        </div>
+
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="checkout-phone">Số điện thoại liên hệ *</label>
+          <input type="tel" id="checkout-phone" class="form-minimal-input" placeholder="0901 234 567" required autocomplete="tel">
+        </div>
+
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="checkout-address">Địa chỉ giao hàng chi tiết *</label>
+          <input type="text" id="checkout-address" class="form-minimal-input" placeholder="Số nhà, đường, phường/xã, quận/huyện..." required autocomplete="street-address">
+        </div>
+
+        <div class="form-minimal-group">
+          <label class="form-minimal-label" for="checkout-note">Ghi chú vận chuyển (Tùy chọn)</label>
+          <input type="text" id="checkout-note" class="form-minimal-input" placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi giao">
+        </div>
+
+        <!-- Khung quét mã QR mô phỏng -->
+        <div class="checkout-qr-box my-4">
+          <span class="text-uppercase fw-bold d-block mb-2" style="font-size: 0.75rem; letter-spacing: 0.08em; color: var(--color-text-main);">
+            Quét mã thanh toán mô phỏng (VietQR)
+          </span>
+          <img id="checkout-qr-image" 
+               src="data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22180%22%20height%3D%22180%22%20viewBox%3D%220%200%20180%20180%22%3E%3Crect%20fill%3D%22%23F2F2F5%22%20width%3D%22180%22%20height%3D%22180%22%2F%3E%3Ctext%20fill%3D%22%23666%22%20font-size%3D%2212%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%3E%C4%90ang%20t%E1%BA%A1o%20m%C3%A3%20QR...%3C%2Ftext%3E%3C%2Fsvg%3E" 
+               alt="Mã QR thanh toán mô phỏng" 
+               class="checkout-qr-img">
+          <div class="small text-muted">
+            Tổng số tiền: <strong id="checkout-total-amount" class="text-dark fs-6">0 ₫</strong>
+          </div>
+          <p class="text-secondary small mt-2 mb-0" style="font-size: 0.775rem;">
+            Đây là giao diện mô phỏng chuyển khoản. Sau khi bấm xác nhận, hệ thống sẽ gọi <code>process_checkout()</code> để khóa dòng và trừ tồn kho tự động.
+          </p>
+        </div>
+
+        <button type="submit" id="btn-confirm-checkout" class="btn-minimal-dark w-100 py-3">
+          Tôi đã chuyển khoản &bull; Xác nhận thanh toán
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container"></div>
+
+  <!-- APPLICATION ENTRY POINT SCRIPT -->
+  <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
