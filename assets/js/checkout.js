@@ -52,7 +52,6 @@ function setupAndShowCheckout(user, profile) {
   // 1. Tự động điền (Auto-fill) thông tin người dùng từ Profile
   const nameInput = document.getElementById('checkout-name');
   const phoneInput = document.getElementById('checkout-phone');
-  const addressInput = document.getElementById('checkout-address');
 
   if (nameInput) {
     nameInput.value = profile?.full_name || user?.user_metadata?.full_name || '';
@@ -97,27 +96,40 @@ export async function executeCheckout() {
     const noteInput = document.getElementById('checkout-note');
 
     const customerName = nameInput?.value.trim();
-    const customerPhone = phoneInput?.value.trim();
+    const customerPhone = phoneInput?.value.trim().replace(/\s+/g, '');
     const shippingAddress = addressInput?.value.trim();
     const note = noteInput?.value.trim() || '';
 
-    // Validate form
+    // 1. Validate form cơ bản
     if (!customerName || !customerPhone || !shippingAddress) {
       showToast('Vui lòng điền đầy đủ Họ tên, Số điện thoại và Địa chỉ nhận hàng.', 'warning');
       return;
     }
 
+    // 2. Validate định dạng số điện thoại chuẩn di động Việt Nam
+    const vnPhoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
+    if (!vnPhoneRegex.test(customerPhone)) {
+      showToast('Số điện thoại không đúng định dạng di động Việt Nam (Ví dụ: 0901234567 hoặc +84901234567).', 'warning', 5000);
+      phoneInput?.focus();
+      return;
+    }
+
     const cart = getCart();
     if (cart.length === 0) {
-      showToast('Giỏ hàng trống!', 'warning');
+      showToast('Giỏ hàng trống! Vui lòng chọn sản phẩm.', 'warning');
       closeCheckoutModal();
+      return;
+    }
+
+    if (cart.length > 20) {
+      showToast('Mỗi đơn hàng chỉ được chứa tối đa 20 mặt hàng khác nhau.', 'warning', 5000);
       return;
     }
 
     // Chuẩn bị payload items: mảng [{"product_id": uuid, "quantity": int}]
     const itemsPayload = cart.map((item) => ({
       product_id: item.id,
-      quantity: item.quantity
+      quantity: Number(item.quantity) || 1
     }));
 
     // Thiết lập trạng thái Loading
@@ -135,41 +147,34 @@ export async function executeCheckout() {
       p_items: itemsPayload
     });
 
+    // Kiểm tra lỗi cấp giao thức HTTP / PostgREST
     if (error) {
-      throw error;
+      throw new Error(error.message || 'Lỗi mạng hoặc kết nối máy chủ.');
     }
 
-    if (data && data.success) {
-      // 1. Dọn dẹp giỏ hàng LocalStorage
-      clearCart();
-
-      // 2. Đóng Checkout Modal
-      closeCheckoutModal();
-
-      // 3. Thông báo thành công với mã đơn hàng
-      const orderShortId = data.order_id ? data.order_id.slice(0, 8).toUpperCase() : 'OK';
-      showToast(
-        `Thanh toán thành công! Đơn hàng #${orderShortId} đã được ghi nhận. Kho hàng đã tự động cập nhật.`,
-        'success',
-        7000
-      );
-
-      // Kích hoạt custom event báo đơn hàng mới được tạo (để refresh data nếu cần)
-      window.dispatchEvent(new CustomEvent('orderCreated', { detail: data }));
-    } else {
-      throw new Error(data?.message || 'Giao dịch không thành công.');
+    // Kiểm tra lỗi nghiệp vụ trả về dạng JSON từ Postgres (data.success === false)
+    if (!data || data.success === false) {
+      throw new Error(data?.error || data?.message || 'Giao dịch không thành công, vui lòng thử lại.');
     }
+
+    // THÀNH CÔNG: Đơn hàng được tạo ở trạng thái 'pending'
+    clearCart();
+    closeCheckoutModal();
+
+    const orderShortId = data.order_id ? data.order_id.slice(0, 8).toUpperCase() : 'OK';
+    showToast(
+      `Khởi tạo đơn hàng #${orderShortId} thành công (Trạng thái: Chờ thanh toán). Kho hàng đã tự động khóa và cập nhật.`,
+      'success',
+      7000
+    );
+
+    // Kích hoạt custom event báo đơn hàng mới được tạo
+    window.dispatchEvent(new CustomEvent('orderCreated', { detail: data }));
 
   } catch (err) {
     console.error('[mộcnhà. Checkout] Lỗi xử lý thanh toán RPC:', err);
-    // Bắt chính xác lỗi từ Postgres Exception (Ví dụ: Hết hàng, tồn kho không đủ)
-    let errorMessage = 'Thanh toán thất bại: ';
-    if (err.message) {
-      errorMessage += err.message;
-    } else {
-      errorMessage += 'Có lỗi xảy ra trong quá trình xử lý đơn hàng.';
-    }
-    showToast(errorMessage, 'error', 7000);
+    const msg = err.message || 'Có lỗi xảy ra trong quá trình xử lý đơn hàng.';
+    showToast(`Đặt hàng thất bại: ${msg}`, 'error', 7000);
   } finally {
     if (confirmBtn) {
       confirmBtn.disabled = false;

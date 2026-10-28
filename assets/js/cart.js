@@ -2,20 +2,50 @@
  * assets/js/cart.js
  * Quản lý Giỏ hàng lưu trữ LocalStorage theo kiến trúc Event-Driven Architecture (EDA)
  * Tách biệt hoàn toàn Business Logic và UI Rendering (Loosely Coupled)
+ * Hỗ trợ tách biệt khóa lưu trữ giữa Khách vãng lai và Tài khoản người dùng (Guest vs User)
+ * Tích hợp xác thực tồn kho thời gian thực từ Supabase Database khi gộp giỏ hàng
  */
 
+import { supabase } from './supabaseClient.js';
 import { formatCurrency } from './ui.js';
 import { showToast } from './toast.js';
 
-const CART_STORAGE_KEY = 'mocnha_cart_v1';
+// Các hằng số khóa lưu trữ LocalStorage
+const GUEST_CART_KEY = 'mocnha_cart_guest';
+const LEGACY_CART_KEY = 'mocnha_cart_v1';
+
+function getUserCartKey(userId) {
+  return `mocnha_cart_user_${userId}`;
+}
+
+// Khóa lưu trữ hoạt động hiện tại (Mặc định là Guest)
+let activeStorageKey = GUEST_CART_KEY;
 let cartItems = [];
 
 /**
- * Đọc giỏ hàng từ LocalStorage
+ * Lấy khóa lưu trữ hiện tại
+ */
+export function getActiveStorageKey() {
+  return activeStorageKey;
+}
+
+/**
+ * Đọc giỏ hàng từ LocalStorage theo ngữ cảnh khóa hiện tại
  */
 export function getCart() {
   try {
-    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    let raw = localStorage.getItem(activeStorageKey);
+
+    // Fallback: Di chuyển dữ liệu từ legacy key (nếu có) sang guest key
+    if (!raw && activeStorageKey === GUEST_CART_KEY) {
+      const legacyRaw = localStorage.getItem(LEGACY_CART_KEY);
+      if (legacyRaw) {
+        raw = legacyRaw;
+        localStorage.setItem(GUEST_CART_KEY, legacyRaw);
+        localStorage.removeItem(LEGACY_CART_KEY);
+      }
+    }
+
     cartItems = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(cartItems)) cartItems = [];
   } catch (err) {
@@ -26,11 +56,11 @@ export function getCart() {
 }
 
 /**
- * Lưu giỏ hàng vào LocalStorage (Thuần State Mutation, không gọi trực tiếp UI render)
+ * Lưu giỏ hàng vào LocalStorage theo khóa hiện tại
  */
 function saveCart() {
   try {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+    localStorage.setItem(activeStorageKey, JSON.stringify(cartItems));
   } catch (err) {
     console.error('[mộcnhà. Cart] Không thể lưu LocalStorage:', err);
   }
@@ -140,7 +170,7 @@ export function removeFromCart(productId) {
 }
 
 /**
- * Xóa sạch giỏ hàng (sau khi checkout thành công)
+ * Xóa sạch giỏ hàng hiện tại (sau khi checkout thành công)
  */
 export function clearCart() {
   cartItems = [];
@@ -149,8 +179,153 @@ export function clearCart() {
 }
 
 /**
+ * ĐỒNG BỘ & GỘP GIỎ HÀNG TỪ GUEST SANG USER KHI ĐĂNG NHẬP
+ * Đọc từ 'mocnha_cart_guest', truy vấn tồn kho thực tế từ Supabase BaaS,
+ * điều chỉnh số lượng hoặc loại bỏ sản phẩm không hợp lệ, sau đó gộp vào 'mocnha_cart_user_${userId}'.
+ * @param {Object} user - Đối tượng Auth User sau khi xác thực thành công
+ */
+export async function syncGuestCartOnLogin(user) {
+  if (!user || !user.id) return;
+
+  try {
+    // 1. Đọc giỏ hàng khách vãng lai
+    let guestRaw = localStorage.getItem(GUEST_CART_KEY);
+    if (!guestRaw) {
+      guestRaw = localStorage.getItem(LEGACY_CART_KEY);
+    }
+    const rawGuestItems = guestRaw ? JSON.parse(guestRaw) : [];
+
+    // 2. Chuyển ngữ cảnh lưu trữ sang tài khoản người dùng
+    activeStorageKey = getUserCartKey(user.id);
+
+    // 3. Đọc giỏ hàng hiện có của tài khoản người dùng
+    const userRaw = localStorage.getItem(activeStorageKey);
+    let userItems = userRaw ? JSON.parse(userRaw) : [];
+    if (!Array.isArray(userItems)) userItems = [];
+
+    // 4. Nếu khách vãng lai có sản phẩm, kiểm tra tồn kho từ Supabase trước khi gộp
+    if (Array.isArray(rawGuestItems) && rawGuestItems.length > 0) {
+      console.log(`[mộcnhà. Cart] Bắt đầu xác thực tồn kho cho ${rawGuestItems.length} mặt hàng từ Guest...`);
+
+      const productIds = rawGuestItems.map((item) => item.id).filter(Boolean);
+      let validGuestItems = [];
+
+      try {
+        // Truy vấn dữ liệu tồn kho và trạng thái kinh doanh mới nhất từ Supabase Database
+        const { data: dbProducts, error: dbError } = await supabase
+          .from('products')
+          .select('id, name, stock, is_active')
+          .in('id', productIds);
+
+        if (dbError) {
+          console.warn('[mộcnhà. Cart] Lỗi khi truy vấn tồn kho Database, sử dụng dữ liệu offline tạm thời:', dbError.message);
+          validGuestItems = rawGuestItems;
+        } else {
+          const dbProductMap = new Map((dbProducts || []).map((p) => [p.id, p]));
+
+          for (const gItem of rawGuestItems) {
+            if (!gItem || !gItem.id) continue;
+            const dbProd = dbProductMap.get(gItem.id);
+
+            // Kiểm tra: Sản phẩm bị gỡ hoặc đã ngừng kinh doanh
+            if (!dbProd || dbProd.is_active === false) {
+              showToast(`Tác phẩm "${gItem.name || 'sản phẩm'}" hiện đã ngừng kinh doanh và được xóa khỏi giỏ hàng.`, 'warning', 5000);
+              continue;
+            }
+
+            const currentStock = Number(dbProd.stock) || 0;
+
+            // Kiểm tra: Sản phẩm đã hết hàng trong kho
+            if (currentStock <= 0) {
+              showToast(`Tác phẩm "${gItem.name || dbProd.name}" hiện đã hết hàng và được xóa khỏi giỏ hàng.`, 'warning', 5000);
+              continue;
+            }
+
+            // Kiểm tra: Tồn kho thực tế nhỏ hơn số lượng khách đã chọn
+            if (currentStock < gItem.quantity) {
+              gItem.quantity = currentStock;
+              gItem.stock = currentStock;
+              showToast(`Sản phẩm "${gItem.name || dbProd.name}" đã được điều chỉnh lại số lượng trong giỏ hàng do thay đổi tồn kho tại cửa hàng.`, 'warning', 5000);
+            } else {
+              gItem.stock = currentStock;
+            }
+
+            validGuestItems.push(gItem);
+          }
+        }
+      } catch (checkErr) {
+        console.error('[mộcnhà. Cart] Ngoại lệ kiểm tra tồn kho Supabase:', checkErr);
+        validGuestItems = rawGuestItems;
+      }
+
+      // 5. Tiến hành gộp các sản phẩm hợp lệ vào tài khoản người dùng
+      if (validGuestItems.length > 0) {
+        validGuestItems.forEach((gItem) => {
+          const existingIdx = userItems.findIndex((u) => u.id === gItem.id);
+          if (existingIdx > -1) {
+            const maxStock = gItem.stock || userItems[existingIdx].stock || 999;
+            const mergedQty = (userItems[existingIdx].quantity || 0) + (gItem.quantity || 1);
+            userItems[existingIdx].quantity = Math.min(mergedQty, maxStock);
+            userItems[existingIdx].stock = maxStock;
+          } else {
+            userItems.push(gItem);
+          }
+        });
+
+        cartItems = userItems;
+        saveCart();
+
+        // Xóa sạch giỏ hàng của khách vãng lai sau khi gộp thành công
+        localStorage.removeItem(GUEST_CART_KEY);
+        localStorage.removeItem(LEGACY_CART_KEY);
+
+        updateCartBadge();
+        renderCartUI();
+        window.dispatchEvent(new CustomEvent('cartUpdated', {
+          detail: { reason: 'guest_to_user_merge', itemCount: validGuestItems.length }
+        }));
+
+        showToast(`Đã đồng bộ và gộp ${validGuestItems.length} tác phẩm từ phiên khách vào giỏ hàng của bạn.`, 'info', 4000);
+      } else {
+        // Toàn bộ sản phẩm của khách không còn khả dụng
+        localStorage.removeItem(GUEST_CART_KEY);
+        localStorage.removeItem(LEGACY_CART_KEY);
+        cartItems = userItems;
+        updateCartBadge();
+        renderCartUI();
+      }
+
+    } else {
+      // Khách vãng lai không có sản phẩm nào: Nạp lại giỏ hàng của tài khoản user
+      cartItems = userItems;
+      updateCartBadge();
+      renderCartUI();
+      window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { reason: 'user_cart_loaded' } }));
+    }
+  } catch (err) {
+    console.error('[mộcnhà. Cart] Ngoại lệ khi gộp giỏ hàng:', err);
+  }
+}
+
+/**
+ * ĐẶT LẠI NGỮ CẢNH GIỎ HÀNG VỀ GUEST KHI ĐĂNG XUẤT
+ * Chuyển activeStorageKey về 'mocnha_cart_guest' và làm rỗng để bảo mật dữ liệu giữa các phiên
+ */
+export function resetCartToGuest() {
+  activeStorageKey = GUEST_CART_KEY;
+  cartItems = [];
+  try {
+    localStorage.removeItem(GUEST_CART_KEY);
+  } catch (e) {}
+
+  updateCartBadge();
+  renderCartUI();
+  window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { reason: 'logout_reset' } }));
+  console.log('[mộcnhà. Cart] Đã đặt lại giỏ hàng về ngữ cảnh khách vãng lai trống.');
+}
+
+/**
  * Đồng bộ tồn kho thời gian thực với Giỏ hàng (Realtime Cart Sync)
- * Áp dụng kiến trúc Event-Driven: Không gọi chéo hàm UI render, chỉ lưu State và phát Event toàn cục
  */
 export function syncCartWithProductStock(productId, newStock, productName = '') {
   const itemIndex = cartItems.findIndex((item) => item.id === productId);
@@ -160,11 +335,9 @@ export function syncCartWithProductStock(productId, newStock, productName = '') 
   const name = productName || item.name;
 
   if (newStock <= 0) {
-    // 1. Tự động xóa khỏi giỏ nếu kho đã hết hàng
     cartItems.splice(itemIndex, 1);
     saveCart();
 
-    // 2. PHÁT SỰ KIỆN TOÀN CỤC BẮT BUỘC ĐỂ UI PHẢN ỨNG TỰ ĐỘNG
     window.dispatchEvent(new CustomEvent('cartUpdated', { 
       detail: { reason: 'realtime_sync', action: 'removed', productId, newStock: 0 } 
     }));
@@ -179,11 +352,9 @@ export function syncCartWithProductStock(productId, newStock, productName = '') 
 
   item.stock = newStock;
   if (item.quantity > newStock) {
-    // 1. Tự động điều chỉnh số lượng trong giỏ xuống bằng tồn kho mới nhất
     item.quantity = newStock;
     saveCart();
 
-    // 2. PHÁT SỰ KIỆN TOÀN CỤC BẮT BUỘC ĐỂ UI PHẢN ỨNG TỰ ĐỘNG
     window.dispatchEvent(new CustomEvent('cartUpdated', { 
       detail: { reason: 'realtime_sync', action: 'adjusted', productId, newStock } 
     }));
@@ -342,25 +513,21 @@ export function renderCartUI() {
 
 /**
  * Khởi tạo giỏ hàng theo Event-Driven Architecture
- * Đăng ký Listener độc lập ở cấp Root: phản ứng tự động vẽ lại giỏ hàng và cập nhật Badge
  */
 export function initCart() {
   getCart();
   updateCartBadge();
 
-  // LISTENER ĐỘC LẬP Ở CẤP ROOT: Phản ứng tự động khi State giỏ hàng thay đổi
   window.addEventListener('cartUpdated', (e) => {
     console.log('[mộcnhà. EDA] Bắt được sự kiện cartUpdated:', e.detail?.reason);
     updateCartBadge();
     renderCartUI();
   });
 
-  // Nút mở/đóng giỏ hàng
   document.getElementById('btn-toggle-cart')?.addEventListener('click', openCartDrawer);
   document.getElementById('btn-close-cart-drawer')?.addEventListener('click', closeCartDrawer);
   document.getElementById('cart-drawer-backdrop')?.addEventListener('click', closeCartDrawer);
 
-  // EVENT DELEGATION: Xử lý tăng / giảm / xóa trong Cart Drawer
   const cartContainer = document.getElementById('cart-drawer-items');
   cartContainer?.addEventListener('click', (e) => {
     const minusBtn = e.target.closest('.cart-btn-minus');

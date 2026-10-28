@@ -3,7 +3,7 @@
  * Quản lý Render DOM và Bảo mật DOM chống XSS triệt để
  * - Bắt buộc dùng document.createElement() & textContent cho dữ liệu động
  * - Hỗ trợ Fallback ảnh 404 sang placeholder thương hiệu mộcnhà.
- * - Loại bỏ hoàn toàn gắn listener trong vòng lặp (Event Delegation hỗ trợ qua class .add-to-cart-btn)
+ * - Quản lý trạng thái Navbar và Phân quyền giao diện theo vai trò RBAC
  */
 
 // Placeholder SVG dự phòng khi link ảnh bị hỏng 404
@@ -46,6 +46,22 @@ function sanitizeImageUrl(url) {
     return trimmed;
   }
   return FALLBACK_IMAGE;
+}
+
+/**
+ * Xử lý escape ký tự đặc biệt chống XSS khi render chuỗi HTML
+ * @param {string} str 
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, (m) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[m]));
 }
 
 /**
@@ -214,7 +230,6 @@ export function renderProductList(containerEl, products) {
  */
 export function prependProductCard(containerEl, product) {
   if (!containerEl) return;
-  // Nếu đang hiển thị empty state, dọn sạch trước
   if (containerEl.querySelector('.text-center.py-5')) {
     containerEl.replaceChildren();
   }
@@ -312,4 +327,127 @@ export function renderEmptyState(containerEl, message) {
 
   col.appendChild(p);
   containerEl.appendChild(col);
+}
+
+/**
+ * Cập nhật giao diện thanh điều hướng Header theo vai trò người dùng (RBAC Navbar UI)
+ * @param {Object|null} user - Đối tượng Auth User hiện hành
+ * @param {Object|null} profile - Đối tượng Profile từ bảng public.profiles
+ */
+export function renderNavbarAuth(user, profile) {
+  const container = document.getElementById('auth-header-container');
+  const myOrdersLink = document.getElementById('nav-my-orders');
+  const adminNavLink = document.getElementById('nav-admin-link');
+  if (!container) return;
+
+  // 1. TRƯỜNG HỢP: ĐÃ ĐĂNG NHẬP (ADMIN HOẶC CUSTOMER)
+  if (user && profile) {
+    const role = profile.role || 'customer';
+    const isAdmin = role === 'admin';
+    const displayName = profile.full_name || user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'Người dùng');
+
+    // Phân quyền hiển thị Menu Link trên thanh điều hướng
+    if (adminNavLink) {
+      if (isAdmin) {
+        adminNavLink.classList.remove('d-none');
+      } else {
+        adminNavLink.classList.add('d-none');
+      }
+    }
+
+    if (myOrdersLink) {
+      myOrdersLink.classList.remove('d-none');
+    }
+
+    // Role badge
+    const roleBadgeHtml = isAdmin 
+      ? '<span class="badge bg-dark ms-1" style="font-size: 0.65rem; letter-spacing: 0.05em; padding: 3px 6px;">ADMIN</span>'
+      : '<span class="badge bg-secondary ms-1" style="font-size: 0.65rem; letter-spacing: 0.05em; padding: 3px 6px;">KHÁCH HÀNG</span>';
+
+    container.innerHTML = `
+      <div class="d-flex align-items-center gap-2">
+        <span class="small text-secondary d-none d-sm-inline" style="font-size: 0.85rem;">
+          Chào, <strong class="text-dark">${escapeHtml(displayName)}</strong>
+          ${roleBadgeHtml}
+        </span>
+        <button id="btn-logout" class="btn-minimal-outline py-1 px-2" style="font-size: 0.75rem;" title="Đăng xuất khỏi hệ thống">
+          Đăng xuất
+        </button>
+      </div>
+    `;
+
+    // Gắn listener đăng xuất thông qua dynamic import để tránh circular dependency
+    const logoutBtn = document.getElementById('btn-logout');
+    logoutBtn?.addEventListener('click', async () => {
+      const { logoutUser } = await import('./auth.js');
+      await logoutUser();
+    });
+
+  } else {
+    // 2. TRƯỜNG HỢP: KHÁCH VÃNG LAI (GUEST)
+    if (adminNavLink) {
+      adminNavLink.classList.add('d-none');
+    }
+    if (myOrdersLink) {
+      myOrdersLink.classList.add('d-none');
+    }
+
+    container.innerHTML = `
+      <div class="d-flex align-items-center gap-2">
+        <button id="btn-open-auth-login" class="btn-minimal-outline py-2 px-3" style="font-size: 0.8rem;">
+          Đăng nhập
+        </button>
+        <button id="btn-open-auth-register" class="btn-minimal-dark py-2 px-3 d-none d-sm-inline-block" style="font-size: 0.8rem;">
+          Đăng ký
+        </button>
+      </div>
+    `;
+
+    // Gắn listener mở Modal theo từng tab
+    document.getElementById('btn-open-auth-login')?.addEventListener('click', async () => {
+      const { openAuthModal } = await import('./auth.js');
+      openAuthModal('login');
+    });
+
+    document.getElementById('btn-open-auth-register')?.addEventListener('click', async () => {
+      const { openAuthModal } = await import('./auth.js');
+      openAuthModal('register');
+    });
+  }
+}
+
+/**
+ * Ẩn/hiện các thành phần DOM theo vai trò người dùng (data-role-required)
+ * @param {'admin' | 'customer' | 'guest'} role 
+ */
+export function updateRoleDOMVisibility(role = 'guest') {
+  // 1. Quản lý các phần tử yêu cầu quyền Admin
+  const adminElements = document.querySelectorAll('[data-role-required="admin"]');
+  adminElements.forEach((el) => {
+    if (role === 'admin') {
+      el.classList.remove('d-none');
+    } else {
+      el.classList.add('d-none');
+    }
+  });
+
+  // 2. Quản lý các phần tử chỉ dành cho người dùng đã đăng nhập (Customer hoặc Admin)
+  const authElements = document.querySelectorAll('[data-role-required="authenticated"]');
+  authElements.forEach((el) => {
+    if (role === 'admin' || role === 'customer') {
+      el.classList.remove('d-none');
+    } else {
+      el.classList.add('d-none');
+    }
+  });
+
+  // 3. Quản lý các phần tử chỉ dành cho Khách vãng lai (Guest)
+  const guestElements = document.querySelectorAll('[data-role-required="guest"]');
+  guestElements.forEach((el) => {
+    if (role === 'guest') {
+      el.classList.remove('d-none');
+    } else {
+      el.classList.add('d-none');
+    }
+  });
 }
