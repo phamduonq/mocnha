@@ -359,6 +359,93 @@ async function processChatMessage(userMessage) {
   return parsedResponse;
 }
 
+/**
+ * Đồng bộ toàn bộ sản phẩm đang hoạt động sang vector embeddings trong public.chatbot_knowledge_base
+ * Sử dụng SUPABASE_SERVICE_ROLE_KEY để có quyền xóa và chèn vào bảng cách ly.
+ * 
+ * @returns {Promise<{ syncedCount: number, message: string }>}
+ */
+async function syncProductsToKnowledgeBase() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    const err = new Error('Không tìm thấy SUPABASE_SERVICE_ROLE_KEY trong biến môi trường.');
+    err.status = 500;
+    throw err;
+  }
+
+  // Khởi tạo Supabase client với Service Role Key để thao tác với chatbot_knowledge_base
+  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+
+  // 1. Đọc toàn bộ sản phẩm đang hoạt động (is_active = true)
+  const { data: products, error: prodErr } = await adminClient
+    .from('products')
+    .select('id, name, category, price, stock, description')
+    .eq('is_active', true);
+
+  if (prodErr) {
+    const err = new Error(`Lỗi đọc bảng products: ${prodErr.message}`);
+    err.status = 500;
+    throw err;
+  }
+
+  if (!products || products.length === 0) {
+    return {
+      syncedCount: 0,
+      message: 'Không có sản phẩm nào đang hoạt động để đồng bộ.',
+    };
+  }
+
+  // 2. Xóa các bản ghi cũ trong chatbot_knowledge_base
+  const { error: delErr } = await adminClient
+    .from('chatbot_knowledge_base')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000');
+
+  if (delErr) {
+    const err = new Error(`Lỗi xóa dữ liệu cũ trong chatbot_knowledge_base: ${delErr.message}`);
+    err.status = 500;
+    throw err;
+  }
+
+  // 3. Tạo đoạn văn bản chuẩn, sinh vector embedding và gom thành danh sách chèn
+  const knowledgeRows = [];
+  for (const product of products) {
+    const textContent = `Sản phẩm: ${product.name}. Danh mục: ${product.category}. Giá bán: ${product.price} VNĐ. Tồn kho: ${product.stock}. Mô tả: ${product.description || ''}.`;
+    
+    // Gọi generateEmbedding tạo vector 768 chiều
+    const embedding = await generateEmbedding(textContent);
+
+    knowledgeRows.push({
+      content: textContent,
+      metadata: {
+        product_id: product.id,
+        name: product.name,
+        price: product.price,
+        category: product.category,
+      },
+      embedding: embedding,
+    });
+  }
+
+  // 4. Chèn toàn bộ bản ghi mới vào public.chatbot_knowledge_base
+  const { error: insertErr } = await adminClient
+    .from('chatbot_knowledge_base')
+    .insert(knowledgeRows);
+
+  if (insertErr) {
+    const err = new Error(`Lỗi chèn dữ liệu vector vào chatbot_knowledge_base: ${insertErr.message}`);
+    err.status = 500;
+    throw err;
+  }
+
+  return {
+    syncedCount: knowledgeRows.length,
+    message: `Đã đồng bộ thành công ${knowledgeRows.length} sản phẩm vào cơ sở tri thức AI Chatbot.`,
+  };
+}
+
 module.exports = {
   processChatMessage,
   generateEmbedding,
@@ -366,4 +453,5 @@ module.exports = {
   buildIsolatedPrompt,
   sanitizeXmlInput,
   withTimeout,
+  syncProductsToKnowledgeBase,
 };

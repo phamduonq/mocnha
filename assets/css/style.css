@@ -729,3 +729,232 @@ body {
   border-color: var(--color-danger);
   color: #FFFFFF;
 }
+
+
+/* ==============================================================================
+   AI CHATBOT WIDGET (WABI-SABI MINIMALISM & ZERO-EXECUTION)
+   ============================================================================== */
+.chatbot-floating-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--color-wood-dark);
+  color: #FFFFFF;
+  border: none;
+  box-shadow: 0 4px 20px rgba(108, 73, 43, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 999;
+  transition: var(--transition-smooth);
+}
+.chatbot-floating-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  background-color: var(--color-wood);
+}
+.chatbot-floating-btn .ai-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: #10B981;
+  color: #FFFFFF;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: 2px solid #FFFFFF;
+  letter-spacing: 0.05em;
+}
+
+.chatbot-window {
+  position: fixed;
+  bottom: 92px;
+  right: 24px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  height: 540px;
+  max-height: calc(100vh - 120px);
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+  transition: var(--transition-smooth);
+}
+.chatbot-window.d-none {
+  display: none !important;
+}
+
+.chatbot-header {
+  padding: 14px 16px;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.chatbot-title {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chatbot-messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: #FCFCFD;
+}
+.chat-msg {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.chat-msg-bot {
+  align-self: flex-start;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-main);
+  border-bottom-left-radius: 2px;
+}
+.chat-msg-user {
+  align-self: flex-end;
+  background-color: var(--color-wood-dark);
+  color: #FFFFFF;
+  border-bottom-right-radius: 2px;
+}
+.chat-action-btn {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--color-wood);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.chat-action-btn:hover {
+  background-color: var(--color-wood-dark);
+}
+.chat-action-btn:disabled {
+  background-color: #9CA3AF;
+  cursor: not-allowed;
+}
+
+.chatbot-input-area {
+  padding: 12px;
+  background-color: #FFFFFF;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: 8px;
+}
+.chatbot-input {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  outline: none;
+  transition: var(--transition-smooth);
+}
+.chatbot-input:focus {
+  border-color: var(--color-wood);
+}
+.chatbot-send-btn {
+  background-color: var(--color-wood-dark);
+  color: #FFFFFF;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.chatbot-send-btn:hover {
+  background-color: var(--color-wood);
+}
+
+/* ==============================================================================
+   ADMIN UPLOAD DUAL-MODE & AUDIT LOGS STYLING
+   ============================================================================== */
+.upload-mode-tab {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: var(--transition-smooth);
+}
+.upload-mode-tab.active {
+  background: var(--color-wood-dark);
+  color: #FFFFFF;
+  border-color: var(--color-wood-dark);
+}
+.image-preview-box {
+  width: 100%;
+  height: 140px;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+.image-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.audit-badge-insert { background-color: #E8F5E9; color: #2E7D32; font-weight: 600; font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; }
+.audit-badge-update { background-color: #FFF3E0; color: #E65100; font-weight: 600; font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; }
+.audit-badge-delete { background-color: #FFEBEE; color: #C62828; font-weight: 600; font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; }
+.admin-tab-nav {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 20px;
+}
+.admin-tab-nav-btn {
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.admin-tab-nav-btn.active {
+  color: var(--color-wood-dark);
+  border-bottom-color: var(--color-wood-dark);
+}

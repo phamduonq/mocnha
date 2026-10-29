@@ -426,9 +426,15 @@ async function uploadToSupabase(cleanBuffer, userId, accessToken, originalFileNa
     throw err;
   }
 
+  // Lấy đường dẫn URL công khai trực tiếp từ Supabase Storage
+  const { data: urlData } = userSupabase.storage
+    .from('user_uploads')
+    .getPublicUrl(data.path);
+
   return {
     path: data.path,
     fullPath: `user_uploads/${data.path}`,
+    publicUrl: urlData?.publicUrl || '',
   };
 }
 

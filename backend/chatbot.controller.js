@@ -8,7 +8,11 @@
  * - Che giấu hoàn toàn stack trace và API secrets.
  */
 
-const { processChatMessage } = require('./chatbot.service');
+const { createClient } = require('@supabase/supabase-js');
+const { processChatMessage, syncProductsToKnowledgeBase } = require('./chatbot.service');
+
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
 // Giới hạn độ dài tin nhắn người dùng (chống Prompt Stuffing / DoS)
 const MAX_MESSAGE_LENGTH = 1500;
@@ -113,6 +117,65 @@ async function chatHandler(req, res) {
   }
 }
 
+/**
+ * Endpoint: POST /api/chat/sync
+ * Bảo vệ: requireAuth + Kiểm tra quyền Admin
+ * Chức năng: Đọc toàn bộ sản phẩm active, sinh embedding và cập nhật chatbot_knowledge_base
+ */
+async function syncKnowledgeBaseHandler(req, res) {
+  try {
+    const userId = req.user?.id;
+    const accessToken = req.token;
+
+    if (!userId || !accessToken) {
+      return res.status(401).json({
+        status: 'error',
+        code: 'UNAUTHORIZED',
+        message: 'Yêu cầu không được xác thực.',
+      });
+    }
+
+    // 1. Kiểm tra vai trò Admin từ bảng profiles
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      auth: { persistSession: false },
+    });
+
+    const { data: profile, error: profileErr } = await userSupabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (profileErr || !profile || profile.role !== 'admin') {
+      return res.status(403).json({
+        status: 'error',
+        code: 'FORBIDDEN',
+        message: 'Bạn không có quyền quản trị viên để thực hiện thao tác đồng bộ này.',
+      });
+    }
+
+    // 2. Thực hiện đồng bộ dữ liệu sang pgvector
+    const syncResult = await syncProductsToKnowledgeBase();
+
+    return res.status(200).json({
+      status: 'success',
+      message: syncResult.message,
+      data: {
+        synced_count: syncResult.syncedCount,
+      },
+    });
+  } catch (error) {
+    console.error('[Sync Knowledge Base Error]:', error);
+    return res.status(error.status || 500).json({
+      status: 'error',
+      code: 'SYNC_ERROR',
+      message: error.message || 'Lỗi xảy ra trong quá trình đồng bộ dữ liệu tri thức AI.',
+    });
+  }
+}
+
 module.exports = {
   chatHandler,
+  syncKnowledgeBaseHandler,
 };

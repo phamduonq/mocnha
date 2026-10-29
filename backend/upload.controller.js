@@ -102,6 +102,7 @@ async function uploadFromUrl(req, res) {
       data: {
         path: uploadResult.path,
         fullPath: uploadResult.fullPath,
+        publicUrl: uploadResult.publicUrl,
         format: 'webp',
         size: cleanBuffer.length,
       },
@@ -158,6 +159,7 @@ async function uploadFromLocal(req, res) {
       data: {
         path: uploadResult.path,
         fullPath: uploadResult.fullPath,
+        publicUrl: uploadResult.publicUrl,
         format: 'webp',
         size: cleanBuffer.length,
       },

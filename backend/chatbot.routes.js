@@ -11,7 +11,8 @@
 
 const express = require('express');
 const router = express.Router();
-const { chatHandler } = require('./chatbot.controller');
+const { chatHandler, syncKnowledgeBaseHandler } = require('./chatbot.controller');
+const { requireAuth } = require('./requireAuth.middleware');
 
 // Cấu hình Rate Limiting chống Denial of Wallet
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // Khung trượt 1 phút (60,000ms)
@@ -84,5 +85,8 @@ function chatbotRateLimiter(req, res, next) {
 
 // Định tuyến API trò chuyện: Áp dụng Rate Limiter trước khi chuyển vào Controller
 router.post('/chat', chatbotRateLimiter, chatHandler);
+
+// Định tuyến API Đồng bộ tri thức RAG cho Chatbot (Admin Only)
+router.post('/chat/sync', requireAuth, syncKnowledgeBaseHandler);
 
 module.exports = router;

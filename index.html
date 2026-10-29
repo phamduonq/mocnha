@@ -196,7 +196,10 @@
             <h1 class="font-serif fs-2 fw-normal mb-1">Quản lý kho tác phẩm</h1>
             <p class="text-muted small mb-0">Thêm, sửa, xóa sản phẩm và đồng bộ thời gian thực toàn cầu.</p>
           </div>
-          <div class="d-flex gap-2">
+          <div class="d-flex flex-wrap gap-2">
+            <button id="btn-sync-chatbot-knowledge" class="btn-minimal-outline py-2 px-3" type="button" style="font-size: 0.85rem;" title="Đồng bộ sản phẩm thành vector embedding cho AI Chatbot RAG">
+              🔄 Đồng bộ dữ liệu AI Chatbot
+            </button>
             <button id="btn-open-create-product" class="btn-minimal-dark py-2 px-3" type="button" style="font-size: 0.85rem;">
               + Thêm tác phẩm mới
             </button>
@@ -228,23 +231,65 @@
           </div>
         </div>
 
-        <!-- Bảng sản phẩm Admin -->
-        <div class="admin-table-container shadow-sm">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Ảnh</th>
-                <th>Tác phẩm &amp; Chất liệu</th>
-                <th>Phân loại</th>
-                <th>Đơn giá</th>
-                <th>Tồn kho</th>
-                <th class="text-end">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody id="admin-products-table-body">
-              <!-- Rendered dynamically via admin.js -->
-            </tbody>
-          </table>
+        <!-- Admin Tab Navigation: Sản phẩm vs Audit Logs -->
+        <div class="admin-tab-nav">
+          <button type="button" id="tab-btn-admin-products" class="admin-tab-nav-btn active">
+            📦 Quản lý kho tác phẩm
+          </button>
+          <button type="button" id="tab-btn-admin-audit" class="admin-tab-nav-btn">
+            🛡️ Nhật ký kiểm toán (Audit Logs)
+          </button>
+        </div>
+
+        <!-- VIEW CON 1: Bảng sản phẩm Admin -->
+        <div id="admin-products-view">
+          <div class="admin-table-container shadow-sm">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Ảnh</th>
+                  <th>Tác phẩm &amp; Chất liệu</th>
+                  <th>Phân loại</th>
+                  <th>Đơn giá</th>
+                  <th>Tồn kho</th>
+                  <th class="text-end">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="admin-products-table-body">
+                <!-- Rendered dynamically via admin.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- VIEW CON 2: Bảng Nhật ký kiểm toán (Audit Logs Append-Only) -->
+        <div id="admin-audit-view" class="d-none">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div>
+              <h4 class="font-serif fs-5 mb-0">Nhật ký thay đổi bất biến (Append-Only)</h4>
+              <p class="text-muted small mb-0">Tự động ghi nhận mọi thao tác INSERT, UPDATE, DELETE kèm IP và trường dữ liệu bị thay đổi.</p>
+            </div>
+            <button type="button" id="btn-refresh-audit-logs" class="btn-minimal-outline py-1 px-3" style="font-size: 0.8rem;">
+              🔄 Làm mới dữ liệu
+            </button>
+          </div>
+          <div class="admin-table-container shadow-sm">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Vai trò (Actor)</th>
+                  <th>Hành động</th>
+                  <th>Bảng</th>
+                  <th>ID Bản ghi</th>
+                  <th>Trường thay đổi</th>
+                </tr>
+              </thead>
+              <tbody id="admin-audit-table-body">
+                <!-- Rendered dynamically via admin.js -->
+              </tbody>
+            </table>
+          </div>
         </div>
 
       </div>
@@ -500,8 +545,45 @@
           </div>
 
           <div class="col-12 form-minimal-group mb-0">
-            <label class="form-minimal-label" for="admin-input-image">Đường dẫn ảnh sản phẩm (URL) *</label>
-            <input type="url" id="admin-input-image" class="form-minimal-input" placeholder="https://images.unsplash.com/photo-..." required>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-minimal-label mb-0">Ảnh tác phẩm (Khử độc EXIF &amp; Nén WebP) *</label>
+              <div class="d-flex gap-2">
+                <button type="button" id="tab-upload-file" class="upload-mode-tab active">Tải tệp từ máy</button>
+                <button type="button" id="tab-upload-url" class="upload-mode-tab">Dán link URL</button>
+              </div>
+            </div>
+
+            <!-- Chế độ 1: Tải tệp từ thiết bị (<= 5MB) -->
+            <div id="upload-mode-file-container">
+              <input type="file" id="admin-file-upload" class="form-minimal-input" accept="image/jpeg,image/png,image/webp">
+              <div class="d-flex justify-content-between align-items-center mt-1">
+                <small class="text-muted" style="font-size: 0.75rem;">Định dạng: JPEG, PNG, WebP (Tối đa 5MB). Tự động strip EXIF.</small>
+                <span id="admin-upload-spinner" class="spinner-border spinner-border-sm text-secondary d-none" role="status"></span>
+              </div>
+            </div>
+
+            <!-- Chế độ 2: Dán liên kết URL (SSRF Protected) -->
+            <div id="upload-mode-url-container" class="d-none">
+              <div class="d-flex gap-2">
+                <input type="url" id="admin-url-upload" class="form-minimal-input" placeholder="https://images.unsplash.com/photo-...">
+                <button type="button" id="btn-process-url-upload" class="btn-minimal-dark py-2 px-3 text-nowrap" style="font-size: 0.8rem;">Xử lý ảnh</button>
+              </div>
+              <small class="text-muted" style="font-size: 0.75rem;">Phân giải DNS, IP Blocklist và khử độc dữ liệu qua Sharp.</small>
+            </div>
+
+            <!-- Khung xem trước ảnh Preview -->
+            <div class="mt-2">
+              <div class="image-preview-box" id="admin-image-preview-box">
+                <span class="text-muted small" id="admin-image-preview-placeholder">Chưa có ảnh</span>
+                <img id="admin-image-preview-img" src="" alt="Preview" class="d-none">
+              </div>
+              <div id="admin-upload-status" class="mt-1 small text-success d-none fw-semibold">
+                ✓ Ảnh đã được khử độc an toàn &amp; nén định dạng WebP
+              </div>
+            </div>
+
+            <!-- Input ẩn lưu URL cuối cùng để lưu vào Database -->
+            <input type="hidden" id="admin-input-image" required>
           </div>
 
           <div class="col-12 form-minimal-group mb-0">
@@ -536,6 +618,38 @@
         <button type="button" id="btn-admin-confirm-delete" class="btn-minimal-dark py-2 px-3 bg-danger border-danger">Xác nhận xóa</button>
       </div>
     </div>
+  </div>
+
+  <!-- AI CHATBOT FLOATING WIDGET (RAG & ZERO-EXECUTION) -->
+  <button id="chatbot-btn" class="chatbot-floating-btn" type="button" aria-label="Mở trợ lý AI Mộc Nhà">
+    <span class="ai-badge">AI</span>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+  </button>
+
+  <div id="chatbot-window" class="chatbot-window d-none">
+    <div class="chatbot-header">
+      <div class="chatbot-title">
+        <span>🌱</span>
+        <span>Mộc Trợ Lý AI</span>
+      </div>
+      <button type="button" id="btn-close-chatbot" class="btn-close" aria-label="Đóng"></button>
+    </div>
+    <div id="chatbot-messages" class="chatbot-messages">
+      <div class="chat-msg chat-msg-bot">
+        Xin chào! Mình là trợ lý ảo Mộc Nhà. Mình có thể tư vấn các tác phẩm nội thất Wabi-Sabi và hỗ trợ bạn đặt hàng ngay tại đây.
+      </div>
+    </div>
+    <form id="chatbot-form" class="chatbot-input-area">
+      <input type="text" id="chatbot-input" class="chatbot-input" placeholder="Hỏi về bàn ghế, kích thước, giá..." autocomplete="off">
+      <button type="submit" id="btn-send-chat" class="chatbot-send-btn" aria-label="Gửi">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </form>
   </div>
 
   <!-- TOAST CONTAINER -->

@@ -1,6 +1,6 @@
 /**
  * assets/js/admin.js
- * Quản lý Phân hệ Quản trị Admin (CRUD Sản phẩm, Thống kê KPI, Modal Thêm/Sửa/Xóa)
+ * Quản lý Phân hệ Quản trị Admin (CRUD Sản phẩm, Thống kê KPI, Dual Image Upload, Audit Logs)
  * Tuân thủ RLS Policy: public.is_admin()
  * Bảo mật DOM chống XSS 100% bằng DOM API & textContent
  */
@@ -171,6 +171,336 @@ export function renderAdminTable(products) {
 }
 
 /**
+ * Lấy danh sách Nhật ký kiểm toán (Audit Logs) từ Supabase và render ra bảng
+ */
+export async function fetchAndRenderAuditLogs() {
+  const tbody = document.getElementById('admin-audit-table-body');
+  if (!tbody) return;
+
+  tbody.replaceChildren();
+
+  // Dòng trạng thái Loading
+  const loadingTr = document.createElement('tr');
+  const loadingTd = document.createElement('td');
+  loadingTd.colSpan = 6;
+  loadingTd.className = 'text-center py-4 text-muted';
+  loadingTd.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang tải dữ liệu kiểm toán bất biến...';
+  loadingTr.appendChild(loadingTd);
+  tbody.appendChild(loadingTr);
+
+  try {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      throw error;
+    }
+
+    tbody.replaceChildren();
+
+    if (!data || data.length === 0) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 6;
+      td.className = 'text-center py-5 text-muted';
+      td.textContent = 'Chưa có bản ghi nhật ký kiểm toán nào.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    data.forEach((log) => {
+      const tr = document.createElement('tr');
+
+      // 1. Thời gian
+      const tdTime = document.createElement('td');
+      tdTime.className = 'small text-muted';
+      tdTime.style.whiteSpace = 'nowrap';
+      const date = log.created_at ? new Date(log.created_at) : new Date();
+      tdTime.textContent = date.toLocaleString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+
+      // 2. Vai trò Actor (Hiển thị Email hoặc Role)
+      const tdActor = document.createElement('td');
+      const actorBadge = document.createElement('span');
+      const actorIdentifier = log.actor_role || 'authenticated';
+      actorBadge.className = 'badge bg-light text-dark border text-truncate';
+      actorBadge.style.maxWidth = '200px';
+      actorBadge.style.display = 'inline-block';
+      actorBadge.style.verticalAlign = 'middle';
+      actorBadge.textContent = actorIdentifier;
+      actorBadge.title = actorIdentifier;
+      tdActor.appendChild(actorBadge);
+
+      if (log.client_ip) {
+        const ipSpan = document.createElement('div');
+        ipSpan.className = 'text-muted';
+        ipSpan.style.fontSize = '0.72rem';
+        ipSpan.textContent = `IP: ${log.client_ip}`;
+        tdActor.appendChild(ipSpan);
+      }
+
+      // 3. Hành động (Action)
+      const tdAction = document.createElement('td');
+      const actionBadge = document.createElement('span');
+      const act = (log.action || '').toUpperCase();
+      if (act === 'INSERT') {
+        actionBadge.className = 'audit-badge-insert';
+      } else if (act === 'UPDATE') {
+        actionBadge.className = 'audit-badge-update';
+      } else if (act === 'DELETE') {
+        actionBadge.className = 'audit-badge-delete';
+      } else {
+        actionBadge.className = 'badge bg-secondary';
+      }
+      actionBadge.textContent = act;
+      tdAction.appendChild(actionBadge);
+
+      // 4. Bảng dữ liệu (Table)
+      const tdTable = document.createElement('td');
+      const codeTable = document.createElement('code');
+      codeTable.style.fontSize = '0.82rem';
+      codeTable.textContent = log.table_name || 'unknown';
+      tdTable.appendChild(codeTable);
+
+      // 5. Record ID
+      const tdRecord = document.createElement('td');
+      const codeRecord = document.createElement('code');
+      codeRecord.className = 'text-muted';
+      codeRecord.style.fontSize = '0.78rem';
+      const recordStr = String(log.record_id || '');
+      codeRecord.textContent = recordStr.length > 8 ? `${recordStr.slice(0, 8)}...` : recordStr;
+      codeRecord.title = recordStr;
+      tdRecord.appendChild(codeRecord);
+
+      // 6. Trường thay đổi (Changed Fields)
+      const tdChanges = document.createElement('td');
+      tdChanges.className = 'small';
+      if (Array.isArray(log.changed_fields) && log.changed_fields.length > 0) {
+        const fieldList = document.createElement('div');
+        fieldList.className = 'd-flex flex-wrap gap-1';
+        log.changed_fields.forEach((field) => {
+          const pill = document.createElement('span');
+          pill.className = 'badge bg-light text-secondary border';
+          pill.style.fontSize = '0.7rem';
+          pill.textContent = field;
+          fieldList.appendChild(pill);
+        });
+        tdChanges.appendChild(fieldList);
+      } else if (act === 'INSERT') {
+        const span = document.createElement('span');
+        span.className = 'text-muted';
+        span.textContent = 'Toàn bộ dữ liệu mới';
+        tdChanges.appendChild(span);
+      } else if (act === 'DELETE') {
+        const span = document.createElement('span');
+        span.className = 'text-danger';
+        span.textContent = 'Bản ghi đã bị xóa';
+        tdChanges.appendChild(span);
+      } else {
+        tdChanges.textContent = '-';
+      }
+
+      tr.appendChild(tdTime);
+      tr.appendChild(tdActor);
+      tr.appendChild(tdAction);
+      tr.appendChild(tdTable);
+      tr.appendChild(tdRecord);
+      tr.appendChild(tdChanges);
+
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    console.error('[mộcnhà. Audit] Lỗi nạp nhật ký kiểm toán:', err);
+    tbody.replaceChildren();
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 6;
+    td.className = 'text-center py-4 text-danger small';
+    td.textContent = `Lỗi tải nhật ký kiểm toán: ${err.message || 'Không có quyền truy cập.'}`;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+}
+
+/**
+ * Cài đặt cơ chế Dual Image Upload (Local File & SSRF-Protected URL)
+ */
+function setupImageUploadHandlers() {
+  const tabFile = document.getElementById('tab-upload-file');
+  const tabUrl = document.getElementById('tab-upload-url');
+  const containerFile = document.getElementById('upload-mode-file-container');
+  const containerUrl = document.getElementById('upload-mode-url-container');
+  const fileInput = document.getElementById('admin-file-upload');
+  const urlInput = document.getElementById('admin-url-upload');
+  const processUrlBtn = document.getElementById('btn-process-url-upload');
+  const spinner = document.getElementById('admin-upload-spinner');
+  const previewImg = document.getElementById('admin-image-preview-img');
+  const previewPlaceholder = document.getElementById('admin-image-preview-placeholder');
+  const uploadStatus = document.getElementById('admin-upload-status');
+  const hiddenInput = document.getElementById('admin-input-image');
+
+  // Chuyển Tab: Tải file
+  tabFile?.addEventListener('click', () => {
+    tabFile.classList.add('active');
+    tabUrl?.classList.remove('active');
+    containerFile?.classList.remove('d-none');
+    containerUrl?.classList.add('d-none');
+  });
+
+  // Chuyển Tab: Dán link URL
+  tabUrl?.addEventListener('click', () => {
+    tabUrl.classList.add('active');
+    tabFile?.classList.remove('active');
+    containerUrl?.classList.remove('d-none');
+    containerFile?.classList.add('d-none');
+  });
+
+  // Xử lý khi chọn File tải lên từ thiết bị
+  fileInput?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Kích thước ảnh vượt quá giới hạn cho phép (Tối đa 5MB).', 'warning');
+      fileInput.value = '';
+      return;
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      showToast('Định dạng tệp không hợp lệ. Chỉ chấp nhận JPG, PNG hoặc WebP.', 'warning');
+      fileInput.value = '';
+      return;
+    }
+
+    try {
+      spinner?.classList.remove('d-none');
+      uploadStatus?.classList.add('d-none');
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        showToast('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/upload/local', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const result = await res.json();
+      if (!res.ok || result.status !== 'success') {
+        throw new Error(result.message || 'Lỗi xử lý tải tệp lên máy chủ.');
+      }
+
+      // Lấy URL công khai trực tiếp từ response của backend
+      const finalUrl = result.data?.publicUrl || (result.data?.path ? supabase.storage.from('user_uploads').getPublicUrl(result.data.path).data?.publicUrl : '');
+
+      if (hiddenInput) hiddenInput.value = finalUrl;
+      if (previewImg) {
+        previewImg.src = finalUrl;
+        previewImg.classList.remove('d-none');
+      }
+      previewPlaceholder?.classList.add('d-none');
+      if (uploadStatus) {
+        uploadStatus.classList.remove('d-none');
+        uploadStatus.textContent = '✓ Tải ảnh thành công (Đã strip EXIF & nén WebP an toàn)';
+      }
+
+      showToast('Khử độc ảnh EXIF và tải lên thành công!', 'success');
+
+    } catch (err) {
+      console.error('[mộcnhà. Upload] Lỗi upload local:', err);
+      showToast(`Tải ảnh thất bại: ${err.message}`, 'error', 6000);
+    } finally {
+      spinner?.classList.add('d-none');
+    }
+  });
+
+  // Xử lý khi người dùng dán URL và bấm "Xử lý ảnh"
+  processUrlBtn?.addEventListener('click', async () => {
+    const url = urlInput?.value.trim();
+    if (!url || !/^https?:\/\//i.test(url)) {
+      showToast('Vui lòng nhập đường dẫn URL hình ảnh hợp lệ (bắt đầu với http:// hoặc https://).', 'warning');
+      urlInput?.focus();
+      return;
+    }
+
+    const originalBtnText = processUrlBtn.innerText;
+
+    try {
+      spinner?.classList.remove('d-none');
+      uploadStatus?.classList.add('d-none');
+      processUrlBtn.disabled = true;
+      processUrlBtn.innerText = 'Đang xử lý...';
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        showToast('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+        return;
+      }
+
+      const res = await fetch('/api/upload/url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ url })
+      });
+
+      const result = await res.json();
+      if (!res.ok || result.status !== 'success') {
+        throw new Error(result.message || 'Lỗi tải ảnh từ URL (bị chặn SSRF hoặc ảnh hỏng).');
+      }
+
+      // Lấy URL công khai trực tiếp từ response của backend
+      const finalUrl = result.data?.publicUrl || (result.data?.path ? supabase.storage.from('user_uploads').getPublicUrl(result.data.path).data?.publicUrl : '');
+
+      if (hiddenInput) hiddenInput.value = finalUrl;
+      if (previewImg) {
+        previewImg.src = finalUrl;
+        previewImg.classList.remove('d-none');
+      }
+      previewPlaceholder?.classList.add('d-none');
+      if (uploadStatus) {
+        uploadStatus.classList.remove('d-none');
+        uploadStatus.textContent = '✓ Ảnh từ URL đã được phân giải an toàn & nén WebP';
+      }
+
+      showToast('Phân giải DNS an toàn, khử độc EXIF và lưu ảnh thành công!', 'success');
+
+    } catch (err) {
+      console.error('[mộcnhà. Upload] Lỗi upload từ URL:', err);
+      showToast(`Xử lý ảnh thất bại: ${err.message}`, 'error', 7000);
+    } finally {
+      spinner?.classList.add('d-none');
+      processUrlBtn.disabled = false;
+      processUrlBtn.innerText = originalBtnText;
+    }
+  });
+}
+
+/**
  * Mở Modal Thêm hoặc Sửa sản phẩm
  */
 export function openProductModal(product = null) {
@@ -180,6 +510,22 @@ export function openProductModal(product = null) {
   if (!modal || !form) return;
 
   form.reset();
+
+  const previewImg = document.getElementById('admin-image-preview-img');
+  const previewPlaceholder = document.getElementById('admin-image-preview-placeholder');
+  const uploadStatus = document.getElementById('admin-upload-status');
+  const hiddenImage = document.getElementById('admin-input-image');
+
+  // Đặt lại trạng thái tab upload về tải file
+  document.getElementById('tab-upload-file')?.classList.add('active');
+  document.getElementById('tab-upload-url')?.classList.remove('active');
+  document.getElementById('upload-mode-file-container')?.classList.remove('d-none');
+  document.getElementById('upload-mode-url-container')?.classList.add('d-none');
+
+  const fileInput = document.getElementById('admin-file-upload');
+  if (fileInput) fileInput.value = '';
+  const urlInput = document.getElementById('admin-url-upload');
+  if (urlInput) urlInput.value = '';
 
   if (product) {
     // Chế độ EDIT
@@ -193,12 +539,31 @@ export function openProductModal(product = null) {
     document.getElementById('admin-input-dimensions').value = product.dimensions || '';
     document.getElementById('admin-input-price').value = product.price || 0;
     document.getElementById('admin-input-stock').value = product.stock || 0;
-    document.getElementById('admin-input-image').value = product.image_url || '';
     document.getElementById('admin-input-desc').value = product.description || '';
+
+    if (hiddenImage) hiddenImage.value = product.image_url || '';
+    if (previewImg && product.image_url) {
+      previewImg.src = product.image_url;
+      previewImg.classList.remove('d-none');
+      previewPlaceholder?.classList.add('d-none');
+      if (uploadStatus) {
+        uploadStatus.classList.remove('d-none');
+        uploadStatus.textContent = '✓ Ảnh tác phẩm hiện tại';
+      }
+    } else {
+      previewImg?.classList.add('d-none');
+      previewPlaceholder?.classList.remove('d-none');
+      uploadStatus?.classList.add('d-none');
+    }
   } else {
     // Chế độ CREATE
     if (titleEl) titleEl.textContent = 'Thêm tác phẩm nội thất mới';
     delete form.dataset.editId;
+
+    if (hiddenImage) hiddenImage.value = '';
+    previewImg?.classList.add('d-none');
+    previewPlaceholder?.classList.remove('d-none');
+    uploadStatus?.classList.add('d-none');
   }
 
   modal.classList.remove('d-none');
@@ -250,8 +615,13 @@ export async function saveProductFromForm() {
     const imageUrl = document.getElementById('admin-input-image')?.value.trim();
     const description = document.getElementById('admin-input-desc')?.value.trim();
 
-    if (!name || !category || price < 0 || stock < 0 || !imageUrl) {
-      showToast('Vui lòng điền đầy đủ Tên, Danh mục, Giá, Tồn kho và Link ảnh hợp lệ.', 'warning');
+    if (!name || !category || price < 0 || stock < 0) {
+      showToast('Vui lòng điền đầy đủ Tên, Danh mục, Giá và Tồn kho hợp lệ.', 'warning');
+      return;
+    }
+
+    if (!imageUrl) {
+      showToast('Vui lòng tải ảnh tác phẩm (qua tệp máy hoặc dán link URL) trước khi lưu.', 'warning');
       return;
     }
 
@@ -433,7 +803,74 @@ export function handleAdminRealtimeChange(eventType, record, oldRecord) {
  * Khởi tạo toàn bộ sự kiện cho Admin Dashboard
  */
 export function initAdminDashboardEvents() {
-  // Nút mở modal thêm sản phẩm
+  // 1. Chuyển Tab giữa Kho tác phẩm và Nhật ký kiểm toán
+  const tabBtnProducts = document.getElementById('tab-btn-admin-products');
+  const tabBtnAudit = document.getElementById('tab-btn-admin-audit');
+  const viewProducts = document.getElementById('admin-products-view');
+  const viewAudit = document.getElementById('admin-audit-view');
+
+  tabBtnProducts?.addEventListener('click', () => {
+    tabBtnProducts.classList.add('active');
+    tabBtnAudit?.classList.remove('active');
+    viewProducts?.classList.remove('d-none');
+    viewAudit?.classList.add('d-none');
+  });
+
+  tabBtnAudit?.addEventListener('click', async () => {
+    tabBtnAudit.classList.add('active');
+    tabBtnProducts?.classList.remove('active');
+    viewAudit?.classList.remove('d-none');
+    viewProducts?.classList.add('d-none');
+    await fetchAndRenderAuditLogs();
+  });
+
+  // Nút làm mới dữ liệu Audit Logs
+  document.getElementById('btn-refresh-audit-logs')?.addEventListener('click', async () => {
+    await fetchAndRenderAuditLogs();
+    showToast('Đã làm mới dữ liệu nhật ký kiểm toán.', 'info', 2000);
+  });
+
+  // Nút đồng bộ tri thức RAG cho AI Chatbot (Admin Only)
+  const syncChatbotBtn = document.getElementById('btn-sync-chatbot-knowledge');
+  syncChatbotBtn?.addEventListener('click', async () => {
+    const originalText = syncChatbotBtn.innerText;
+    try {
+      syncChatbotBtn.disabled = true;
+      syncChatbotBtn.innerText = 'Đang đồng bộ AI...';
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        showToast('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+        return;
+      }
+
+      const res = await fetch('/api/chat/sync', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await res.json();
+      if (!res.ok || result.status !== 'success') {
+        throw new Error(result.message || 'Lỗi khi đồng bộ dữ liệu vào AI Knowledge Base.');
+      }
+
+      showToast(result.message || 'Đồng bộ tri thức AI Chatbot thành công!', 'success', 5000);
+    } catch (err) {
+      console.error('[mộcnhà. Admin] Lỗi đồng bộ AI Chatbot:', err);
+      showToast(`Đồng bộ thất bại: ${err.message}`, 'error', 6000);
+    } finally {
+      syncChatbotBtn.disabled = false;
+      syncChatbotBtn.innerText = originalText;
+    }
+  });
+
+  // 2. Khởi tạo Dual Image Upload Handlers
+  setupImageUploadHandlers();
+
+  // 3. Nút mở modal thêm sản phẩm
   document.getElementById('btn-open-create-product')?.addEventListener('click', () => {
     openProductModal(null);
   });

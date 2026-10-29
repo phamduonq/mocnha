@@ -96,10 +96,11 @@ BEGIN
         v_actor_id := NULL;
     END;
     
-    -- 2. Trích xuất Role an toàn từ JWT claims hoặc current_user
+    -- 2. Trích xuất Email hoặc Role an toàn từ JWT claims hoặc current_user
+    -- Ưu tiên lấy email để Admin dễ dàng kiểm tra danh tính trong trang Nhật ký kiểm toán
     -- TUYỆT ĐỐI KHÔNG query bảng public.profiles để tránh đệ quy RLS, vòng lặp quyền hoặc deadlock khi chạy ngầm
     BEGIN
-        v_actor_role := COALESCE(auth.jwt()->>'role', current_user);
+        v_actor_role := COALESCE(auth.jwt()->>'email', auth.jwt()->>'role', current_user);
     EXCEPTION WHEN OTHERS THEN
         v_actor_role := current_user;
     END;
